@@ -261,7 +261,7 @@ function getSummaryRows(){
   );
   const assignments=[...new Set(assignmentsRows.map(r=>r.fecha).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es"));
   const closures=[...new Set(closureRecords.map(r=>r.fecha).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es"));
-  const conductors=[...new Set([
+  const conductores=[...new Set([
    ...assignmentsRows.map(r=>String(r.conductor||"").trim()),
    ...closureRecords.map(r=>String(r.conductor||"").trim())
   ].filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es"));
