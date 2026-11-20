@@ -62,10 +62,32 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#fafafa}.empty{
  #view-registroAsignacion .register-year{font-size:12px;margin-bottom:5px}
  #view-registroAsignacion .register-note,#view-registroAsignacion .register-code{font-size:8px}
 }
+
+.password-gate{position:fixed;inset:0;z-index:9999;background:#0f172aee;display:flex;align-items:center;justify-content:center;padding:18px}
+.password-card{width:min(100%,420px);background:white;border-radius:16px;padding:24px;box-shadow:0 20px 60px #0005;color:#1e293b}
+.password-card h2{margin:0 0 8px}.password-card p{font-size:13px;color:#64748b}.password-card label{margin-top:12px}
+.password-card button{margin-top:14px}.password-card button.block{width:100%}
+.password-error{color:#be123c!important;min-height:18px;font-weight:650}.password-hint{font-size:10px!important;margin-top:16px}
+.format-congregation{display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:12px}.format-congregation-print{display:none}
+@media print{body:has(#view-formato:not(.hidden)) #view-formato .format-congregation-print{display:flex;justify-content:space-between;gap:20px;margin-bottom:8px;font-size:11px;font-weight:700}body:has(#view-formato:not(.hidden)) #view-formato .format-congregation-print>div{min-width:30%}}
 </style>
 </head>
 <body>
-<header><div class="wrap"><div><h1>Servicio del Campo</h1><p>Organización de actividades, publicadores, territorios y puntos de encuentro</p></div><span class="status" id="saveStatus">Guardado local</span></div></header>
+<div id="passwordGate" class="password-gate"><div class="password-card">
+ <h2 id="passwordGateTitle">Acceso al programa</h2><p id="passwordGateMessage">Introduce tu contraseña para abrir Servicio del Campo.</p>
+ <form id="passwordGateForm"><label for="passwordGateInput" id="passwordGateLabel">Contraseña</label><input id="passwordGateInput" type="password" autocomplete="current-password" required minlength="4">
+ <div id="passwordConfirmWrap" class="hidden"><label for="passwordConfirmInput">Confirmar contraseña</label><input id="passwordConfirmInput" type="password" autocomplete="new-password" minlength="4"></div>
+ <p id="passwordGateError" class="password-error" role="alert"></p><button type="submit" id="passwordGateSubmit" class="block">Entrar</button></form>
+ <p class="password-hint">Bloqueo de apertura local. No sustituye la protección de Windows ni cifra los archivos.</p>
+</div></div>
+<div id="changePasswordModal" class="password-gate hidden"><div class="password-card">
+ <h2>Modificar contraseña</h2><form id="changePasswordForm">
+ <label for="oldPasswordInput">Contraseña actual</label><input id="oldPasswordInput" type="password" required autocomplete="current-password">
+ <label for="newPasswordInput">Nueva contraseña</label><input id="newPasswordInput" type="password" required minlength="4" autocomplete="new-password">
+ <label for="newPasswordConfirmInput">Confirmar nueva contraseña</label><input id="newPasswordConfirmInput" type="password" required minlength="4" autocomplete="new-password">
+ <p id="changePasswordError" class="password-error" role="alert"></p><div class="toolbar"><button type="submit">Guardar contraseña</button><button type="button" class="secondary" id="cancelPasswordChange">Cancelar</button></div>
+ </form></div></div>
+<header><div class="wrap"><div><h1>Servicio del Campo</h1><p>Organización de actividades, publicadores, territorios y puntos de encuentro</p></div><div class="toolbar"><span class="status" id="saveStatus">Guardado local</span><button type="button" id="changePasswordBtn" class="secondary hidden">Modificar contraseña</button></div></div></header>
 <nav class="no-print"><div class="tabs" id="tabs">
 <button class="tab active" data-view="actividades">Actividades</button>
 <button class="tab" data-view="publicadores">Publicadores</button>
@@ -150,7 +172,10 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#fafafa}.empty{
  <div class="panel no-print"><div class="topline"><div><h2>Formato para cartelera</h2><div class="muted">Genera una tabla desde las actividades y personalízala antes de imprimir.</div></div></div>
  <div class="toolbar"><label for="formatMonth" style="margin:0">Mes de programación:</label><input id="formatMonth" type="month" style="max-width:180px"><button id="generateFormat">Actualizar desde actividades</button><button class="secondary" id="addFormatRow">Agregar fila</button><button class="secondary" id="addFormatCol">Agregar columna</button><button class="green" onclick="window.print()">Imprimir cartelera</button></div>
  <p class="muted">Al actualizar, las filas se regeneran desde los registros de actividades. Las ediciones manuales se conservan hasta que vuelvas a actualizar.</p></div>
- <div class="panel"><div class="topline"><h2 id="formatHeading">Programación del servicio del campo</h2><div class="muted" id="formatInfo"></div></div>
+ <div class="panel">
+  <div class="format-congregation no-print"><div><label for="congregationName">Nombre de la congregación</label><input id="congregationName" placeholder="Escribe el nombre de la congregación"></div><div><label for="congregationNumber">Número de congregación</label><input id="congregationNumber" placeholder="Escribe el número de congregación"></div></div>
+  <div class="format-congregation-print"><div id="congregationNamePrint"></div><div id="congregationNumberPrint"></div></div>
+  <div class="topline"><h2 id="formatHeading">Programación del servicio del campo</h2><div class="muted no-print" id="formatInfo"></div></div>
  <div class="table-wrap"><table class="format-table"><thead id="formatHead"></thead><tbody id="formatBody"></tbody></table></div></div>
 </section>
 
@@ -368,7 +393,7 @@ $("summaryExport").onclick=()=>{
 // Formato editable para cartelera
 const defaultCols=[{id:"fecha",title:"Fecha"},{id:"hora",title:"Hora(s)"},{id:"conductor",title:"Conductor(es)"},{id:"territorio",title:"Territorio(s)"},{id:"punto",title:"Lugar / punto de encuentro"}];
 function ensureFormat(){if(!state.format)state.format={columns:defaultCols.map(x=>({...x})),rows:[]};if(!state.format.columns?.length)state.format.columns=defaultCols.map(x=>({...x}));state.format.columns=state.format.columns.filter(c=>c.id!=="participantes");state.format.rows.forEach(r=>delete r.participantes);}
-function renderFormat(){ensureFormat();$("formatHeading").textContent=$("formatMonth").value?`Servicio del Campo — ${$("formatMonth").value}`:"Programación del servicio del campo";$("formatInfo").textContent=`${state.format.rows.length} filas`;$("formatHead").innerHTML=`<tr>${state.format.columns.map((c,i)=>`<th><div>${esc(c.title)} <span class="no-print"><button class="small secondary" data-col-edit="${i}">Renombrar</button> <button class="small danger" data-col-del="${i}">Quitar</button></span></div></th>`).join("")}<th class="no-print">Acciones</th></tr>`;$("formatBody").innerHTML=state.format.rows.length?state.format.rows.map((r,ri)=>`<tr>${state.format.columns.map(c=>`<td><input class="format-cell" data-row="${ri}" data-col="${esc(c.id)}" aria-label="${esc(c.title)}" value="${esc(r[c.id]||"")}"></td>`).join("")}<td class="no-print"><button class="small danger" data-row-del="${ri}">Eliminar</button></td></tr>`).join(""):`<tr><td class="empty" colspan="${state.format.columns.length+1}">No hay filas. Selecciona un mes y pulsa “Actualizar desde actividades”.</td></tr>`}
+function renderFormat(){ensureFormat();$("congregationName").value=state.format.congregationName||"";$("congregationNumber").value=state.format.congregationNumber||"";$("congregationNamePrint").textContent=state.format.congregationName||"";$("congregationNumberPrint").textContent=state.format.congregationNumber?("Congregación N.º "+state.format.congregationNumber):"";$("formatHeading").textContent=$("formatMonth").value?`Servicio del Campo — ${$("formatMonth").value}`:"Programación del servicio del campo";$("formatInfo").textContent=`${state.format.rows.length} filas`;$("formatHead").innerHTML=`<tr>${state.format.columns.map((c,i)=>`<th><div>${esc(c.title)} <span class="no-print"><button class="small secondary" data-col-edit="${i}">Renombrar</button> <button class="small danger" data-col-del="${i}">Quitar</button></span></div></th>`).join("")}<th class="no-print">Acciones</th></tr>`;$("formatBody").innerHTML=state.format.rows.length?state.format.rows.map((r,ri)=>`<tr>${state.format.columns.map(c=>`<td><input class="format-cell" data-row="${ri}" data-col="${esc(c.id)}" aria-label="${esc(c.title)}" value="${esc(r[c.id]||"")}"></td>`).join("")}<td class="no-print"><button class="small danger" data-row-del="${ri}">Eliminar</button></td></tr>`).join(""):`<tr><td class="empty" colspan="${state.format.columns.length+1}">No hay filas. Selecciona un mes y pulsa “Actualizar desde actividades”.</td></tr>`}
 $("formatHead").onclick=e=>{const edit=e.target.closest("[data-col-edit]"),del=e.target.closest("[data-col-del]");if(edit){const c=state.format.columns[+edit.dataset.col],v=prompt("Nuevo título de la columna:",c.title);if(v&&v.trim()){c.title=v.trim();save();renderFormat()}}if(del){const i=+del.dataset.col;if(state.format.columns.length<=1){notify("Debe quedar al menos una columna.");return}if(confirm("¿Quitar esta columna del formato?")){const c=state.format.columns.splice(i,1)[0];state.format.rows.forEach(r=>delete r[c.id]);save();renderFormat()}}};
 $("formatBody").addEventListener("input",e=>{const x=e.target.closest(".format-cell");if(!x)return;const r=state.format.rows[+x.dataset.row];r[x.dataset.col]=x.value;save();if(!$("view-resumen").classList.contains("hidden"))renderSummary()});
 $("formatBody").onclick=e=>{const b=e.target.closest("[data-row-del]");if(b&&confirm("¿Eliminar esta fila del formato?")){state.format.rows.splice(+b.dataset.row,1);save();renderFormat()}};
@@ -376,6 +401,8 @@ $("generateFormat").onclick=()=>{ensureFormat();const m=$("formatMonth").value;c
 $("addFormatRow").onclick=()=>{ensureFormat();const r={};state.format.columns.forEach(c=>r[c.id]="");state.format.rows.push(r);save();renderFormat()};
 $("addFormatCol").onclick=()=>{ensureFormat();const title=prompt("Nombre de la nueva columna:");if(!title||!title.trim())return;let id="extra_"+uid().replace(/-/g,"").slice(0,8);state.format.columns.push({id,title:title.trim()});state.format.rows.forEach(r=>r[id]="");save();renderFormat()};
 $("formatMonth").addEventListener("change",()=>renderFormat());
+$("congregationName").addEventListener("input",e=>{ensureFormat();state.format.congregationName=e.target.value;save();$("congregationNamePrint").textContent=e.target.value});
+$("congregationNumber").addEventListener("input",e=>{ensureFormat();state.format.congregationNumber=e.target.value;save();$("congregationNumberPrint").textContent=e.target.value?("Congregación N.º "+e.target.value):""});
 
 // Exportar, respaldo y restauración
 function download(name,content,type){const blob=new Blob([content],{type}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url)}
@@ -442,6 +469,54 @@ $("registerExport").onclick=()=>{
 
 $("backup").onclick=()=>download("copia_servicio_del_campo.json",JSON.stringify({app:"Servicio del Campo",version:3,exportado:new Date().toISOString(),...state},null,2),"application/json");
 $("restore").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const x=JSON.parse(await f.text());if(!Array.isArray(x.activities))throw Error("No se encontró la lista de actividades.");if(!confirm("La restauración reemplazará todos los registros actuales y el formato. ¿Deseas continuar?"))return;state.activities=x.activities;state.publicadores=Array.isArray(x.publicadores)?x.publicadores:[];state.lugares=Array.isArray(x.lugares)?x.lugares:[];state.territorios=Array.isArray(x.territorios)?x.territorios:[];state.territoryClosures=Array.isArray(x.territoryClosures)?x.territoryClosures:[];state.territoryAssignmentRegister=Array.isArray(x.territoryAssignmentRegister)?x.territoryAssignmentRegister:[];state.format=x.format||null;save();resetActivity();resetClosure();Object.keys(catalogs).forEach(renderCatalog);renderActivities();refreshOptions();renderClosures();renderFormat();notify("Copia restaurada correctamente.")}catch(err){alert("No se pudo restaurar: "+err.message)}finally{e.target.value=""}};
+
+
+// Contraseña local: PBKDF2-SHA-256 con sal aleatoria.
+const PASSWORD_KEY="servicioDelCampo_password_v1";let passwordMode="login";
+function b64(bytes){let s="";bytes.forEach(b=>s+=String.fromCharCode(b));return btoa(s)}
+function unb64(s){return Uint8Array.from(atob(s),c=>c.charCodeAt(0))}
+async function digestPassword(password,salt){
+ if(!window.crypto||!crypto.subtle)throw new Error("Web Crypto no está disponible. Abre el programa en Edge actualizado.");
+ const key=await crypto.subtle.importKey("raw",new TextEncoder().encode(password),"PBKDF2",false,["deriveBits"]);
+ return new Uint8Array(await crypto.subtle.deriveBits({name:"PBKDF2",salt,iterations:180000,hash:"SHA-256"},key,256));
+}
+async function setPassword(password){
+ const salt=new Uint8Array(16);crypto.getRandomValues(salt);const hash=await digestPassword(password,salt);
+ localStorage.setItem(PASSWORD_KEY,JSON.stringify({salt:b64(salt),hash:b64(hash),iterations:180000,algorithm:"PBKDF2-SHA-256"}));
+}
+async function checkPassword(password){
+ const data=JSON.parse(localStorage.getItem(PASSWORD_KEY)||"null");if(!data)return false;
+ const actual=await digestPassword(password,unb64(data.salt)),expected=unb64(data.hash);
+ return actual.length===expected.length&&actual.every((v,i)=>v===expected[i]);
+}
+function unlockApp(){$("passwordGate").classList.add("hidden");$("changePasswordBtn").classList.remove("hidden")}
+function configureGate(){
+ passwordMode=localStorage.getItem(PASSWORD_KEY)?"login":"setup";
+ $("passwordGateTitle").textContent=passwordMode==="setup"?"Crear contraseña de apertura":"Acceso al programa";
+ $("passwordGateMessage").textContent=passwordMode==="setup"?"Crea una contraseña para proteger la apertura del programa.":"Introduce tu contraseña para abrir Servicio del Campo.";
+ $("passwordGateLabel").textContent=passwordMode==="setup"?"Nueva contraseña":"Contraseña";
+ $("passwordConfirmWrap").classList.toggle("hidden",passwordMode!=="setup");
+ $("passwordGateSubmit").textContent=passwordMode==="setup"?"Crear contraseña y abrir":"Entrar";
+}
+configureGate();
+$("passwordGateForm").addEventListener("submit",async e=>{
+ e.preventDefault();const p=$("passwordGateInput").value;
+ try{
+  if(passwordMode==="setup"){if(p.length<4)throw Error("Usa al menos 4 caracteres.");if(p!==$("passwordConfirmInput").value)throw Error("Las contraseñas no coinciden.");await setPassword(p);unlockApp()}
+  else{if(!await checkPassword(p))throw Error("Contraseña incorrecta.");unlockApp()}
+  $("passwordGateError").textContent="";
+ }catch(err){$("passwordGateError").textContent=err.message||"No se pudo validar la contraseña."}
+});
+$("changePasswordBtn").addEventListener("click",()=>{$("changePasswordError").textContent="";["oldPasswordInput","newPasswordInput","newPasswordConfirmInput"].forEach(id=>$(id).value="");$("changePasswordModal").classList.remove("hidden")});
+$("cancelPasswordChange").addEventListener("click",()=>$("changePasswordModal").classList.add("hidden"));
+$("changePasswordForm").addEventListener("submit",async e=>{
+ e.preventDefault();try{
+  if(!await checkPassword($("oldPasswordInput").value))throw Error("La contraseña actual no es correcta.");
+  const p=$("newPasswordInput").value;if(p.length<4)throw Error("Usa al menos 4 caracteres para la nueva contraseña.");
+  if(p!==$("newPasswordConfirmInput").value)throw Error("La confirmación no coincide.");
+  await setPassword(p);$("changePasswordModal").classList.add("hidden");notify("Contraseña modificada correctamente.");
+ }catch(err){$("changePasswordError").textContent=err.message||"No se pudo cambiar la contraseña."}
+});
 
 // Migración de la primera versión: conserva actividades previas.
 if(!Array.isArray(state.activities))state.activities=[];
