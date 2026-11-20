@@ -112,7 +112,7 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#fafafa}.empty{
  <div class="panel">
   <div class="topline"><div><h2 id="summaryHeading">Resumen anual</h2><div class="muted" id="summaryInfo"></div></div><input class="search no-print" id="summarySearch" placeholder="Buscar código o conductor…"></div>
   <div class="table-wrap"><table><thead><tr><th>Año</th><th>Código *</th><th>Conductores</th><th>Fechas de asignación</th><th>Fecha de cierre</th></tr></thead><tbody id="summaryRows"></tbody></table></div>
-  <p class="muted no-print" style="margin-top:10px">Las fechas de asignación y los conductores se leen de las filas guardadas en “Programación del servicio del campo”. Las fechas de cierre y los conductores de cierre se leen de “Territorios cerrados”. Ambos módulos se relacionan mediante el código del territorio. En formatos antiguos sin código guardado, se intenta reconocerlo por el texto de “Territorio(s)”.</p>
+  <p class="muted no-print" style="margin-top:10px">Las fechas de asignación y los conductores se leen directamente de “Programación del servicio del campo”. Las fechas de cierre y sus conductores se leen de “Territorios cerrados”. Ambos registros se relacionan mediante el código del territorio.</p>
  </div>
 </section>
 
@@ -232,42 +232,38 @@ function linkedActivityCodes(programRow){
 }
 function getSummaryRows(){
  const year=summaryYear();
- const programRows=Array.isArray(state.format?.rows)?state.format.rows:[];
+ // Fuente correcta: la tabla “Programación del servicio del campo”
+ // corresponde a state.activities, no al formato de cartelera state.format.
+ const programRows=Array.isArray(state.activities)?state.activities:[];
  const closureRows=Array.isArray(state.territoryClosures)?state.territoryClosures:[];
  const byCode=new Map();
  const addCode=(code,nombre="")=>{
-  const display=String(code||"").trim(),key=normalizeTerritoryText(display);
+  const display=String(code??"").trim(),key=normalizeTerritoryText(display);
   if(!key)return;
   if(!byCode.has(key))byCode.set(key,{codigo:display,nombre:nombre||""});
   else if(nombre&&!byCode.get(key).nombre)byCode.get(key).nombre=nombre;
  };
  (Array.isArray(state.territorios)?state.territorios:[]).forEach(t=>addCode(t.codigo,t.nombre));
- // Los códigos se obtienen de la programación guardada; si es un formato antiguo,
- // se recuperan desde las actividades que corresponden a cada fila programada.
  programRows.forEach(r=>{
-  if(summaryDateYear(r.fecha)!==year)return;
-  splitSummaryValues(r.codigo).forEach(code=>addCode(code));
-  if(!String(r.codigo||"").trim())linkedActivityCodes(r).forEach(code=>addCode(code));
+  if(summaryDateYear(r.fecha)===year)addCode(r.codigo);
  });
- closureRows.forEach(c=>{if(summaryDateYear(c.fecha)===year)addCode(c.codigo)});
- const codesForProgramRow=r=>{
-  const explicit=splitSummaryValues(r.codigo);
-  return explicit.length?explicit:linkedActivityCodes(r);
- };
- const programForTerritory=t=>programRows.filter(r=>{
-  if(summaryDateYear(r.fecha)!==year)return false;
-  const codes=codesForProgramRow(r);
-  if(codes.length)return codes.some(code=>normalizeTerritoryText(code)===normalizeTerritoryText(t.codigo));
-  return territoryAppears(r.territorio,t);
+ closureRows.forEach(r=>{
+  if(summaryDateYear(r.fecha)===year)addCode(r.codigo);
  });
  return [...byCode.values()].map(t=>{
-  const assignmentsRows=programForTerritory(t);
-  const assignments=[...new Set(assignmentsRows.map(r=>r.fecha).filter(d=>summaryDateYear(d)===year))].sort((a,b)=>a.localeCompare(b,"es"));
-  const closureRecords=closureRows.filter(c=>normalizeTerritoryText(c.codigo)===normalizeTerritoryText(t.codigo)&&summaryDateYear(c.fecha)===year);
-  const closures=[...new Set(closureRecords.map(c=>c.fecha).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es"));
+  const assignmentsRows=programRows.filter(r=>
+   summaryDateYear(r.fecha)===year &&
+   normalizeTerritoryText(r.codigo)===normalizeTerritoryText(t.codigo)
+  );
+  const closureRecords=closureRows.filter(r=>
+   summaryDateYear(r.fecha)===year &&
+   normalizeTerritoryText(r.codigo)===normalizeTerritoryText(t.codigo)
+  );
+  const assignments=[...new Set(assignmentsRows.map(r=>r.fecha).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es"));
+  const closures=[...new Set(closureRecords.map(r=>r.fecha).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es"));
   const conductors=[...new Set([
-   ...assignmentsRows.flatMap(r=>splitSummaryValues(r.conductor)),
-   ...closureRecords.map(c=>String(c.conductor||"").trim())
+   ...assignmentsRows.map(r=>String(r.conductor||"").trim()),
+   ...closureRecords.map(r=>String(r.conductor||"").trim())
   ].filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es"));
   return {anio:year,codigo:t.codigo,nombre:t.nombre,conductores,asignaciones:assignments,cierres:closures};
  }).sort((a,b)=>String(a.codigo).localeCompare(String(b.codigo),"es",{numeric:true}));
@@ -283,11 +279,11 @@ $("summaryYear").value=String(new Date().getFullYear());
 $("summaryRefresh").onclick=()=>{
  try{
   const readLatest=(key,fallback)=>{const raw=localStorage.getItem(key);if(!raw)return fallback;const parsed=JSON.parse(raw);return Array.isArray(parsed)?parsed:fallback};
-  state.format=(()=>{const raw=localStorage.getItem(FORMAT_KEY);if(!raw)return state.format;try{return JSON.parse(raw)}catch(e){return state.format}})();
+  state.activities=readLatest(KEY,state.activities);
   state.territorios=readLatest(KEY+"_territorios",state.territorios);
   state.territoryClosures=readLatest(KEY+"_cierres_territorio",state.territoryClosures);
   renderSummary();
-  notify(`Resumen actualizado: ${state.activities.length} actividades, ${state.territorios.length} territorios y ${state.territoryClosures.length} cierres leídos.`);
+  notify(`Resumen actualizado: ${state.activities.length} asignaciones, ${state.territorios.length} territorios y ${state.territoryClosures.length} cierres leídos.`);
  }catch(err){renderSummary();notify("No se pudieron recargar los datos guardados; se muestra la información de esta página.")}
 };
 $("summaryYear").addEventListener("change",renderSummary);
