@@ -278,10 +278,21 @@ function renderSummary(){
 $("summaryYear").value=String(new Date().getFullYear());
 $("summaryRefresh").onclick=()=>{
  try{
-  const readLatest=(key,fallback)=>{const raw=localStorage.getItem(key);if(!raw)return fallback;const parsed=JSON.parse(raw);return Array.isArray(parsed)?parsed:fallback};
+  // No reemplazar datos ya cargados/restaurados en memoria con listas vacías antiguas.
+  // Una lista vacía en localStorage no debe borrar una lista con registros en state.
+  const readLatest=(key,fallback)=>{
+   const raw=localStorage.getItem(key);
+   if(raw===null)return fallback;
+   const parsed=JSON.parse(raw);
+   if(!Array.isArray(parsed))return fallback;
+   return parsed.length>0 || fallback.length===0 ? parsed : fallback;
+  };
   state.activities=readLatest(KEY,state.activities);
   state.territorios=readLatest(KEY+"_territorios",state.territorios);
   state.territoryClosures=readLatest(KEY+"_cierres_territorio",state.territoryClosures);
+  // Persistir la fuente válida que se está usando para que la próxima carga
+  // y las demás pantallas consulten exactamente los mismos registros.
+  save();
   renderSummary();
   notify(`Resumen actualizado: ${state.activities.length} asignaciones, ${state.territorios.length} territorios y ${state.territoryClosures.length} cierres leídos.`);
  }catch(err){renderSummary();notify("No se pudieron recargar los datos guardados; se muestra la información de esta página.")}
