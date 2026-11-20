@@ -42,6 +42,9 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#fafafa}.empty{
 #view-registroAsignacion .register-table thead tr:first-child th{height:30px}
 #view-registroAsignacion .register-table thead tr:last-child th{height:38px}
 #view-registroAsignacion .register-table td{height:34px;font-size:11px}
+#view-registroAsignacion .register-table .register-assignee{height:22px!important;font-weight:600;font-size:10px!important;padding:1px 2px!important;white-space:normal}
+#view-registroAsignacion .register-table .register-dates-row td{height:27px!important}
+
 #view-registroAsignacion .register-table input{border:0;border-radius:0;padding:2px 1px;text-align:center;min-width:0;width:100%;font-size:10px;background:transparent}
 #view-registroAsignacion .register-table .territory-number{font-weight:500;width:7%}
 #view-registroAsignacion .register-note{font-size:10px;color:#111;margin:7px 0 2px}
@@ -51,6 +54,9 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#fafafa}.empty{
  #view-registroAsignacion .register-table{min-width:0!important;width:100%!important;table-layout:fixed}
  #view-registroAsignacion .register-table th,#view-registroAsignacion .register-table td{padding:2px 1px!important;font-size:8px!important}
  #view-registroAsignacion .register-table td{height:30px!important}
+ #view-registroAsignacion .register-table .register-assignee{height:18px!important;font-size:7px!important}
+ #view-registroAsignacion .register-table .register-dates-row td{height:23px!important}
+
  #view-registroAsignacion .register-table input{min-width:0!important;width:100%!important;font-size:8px!important;padding:0!important}
  #view-registroAsignacion .register-title{font-size:16px;margin-bottom:5px}
  #view-registroAsignacion .register-year{font-size:12px;margin-bottom:5px}
@@ -158,7 +164,7 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#fafafa}.empty{
    <button id="registerExport" class="secondary">Exportar CSV</button>
    <button class="green" onclick="window.print()">Imprimir formulario</button>
   </div>
-  <p class="muted" style="margin-top:10px">Diseño adaptado al formulario S-13. Se actualiza automáticamente con las fechas del Resumen anual de territorios. Se muestran 20 territorios por página.</p>
+  <p class="muted" style="margin-top:10px">Diseño adaptado al formulario S-13. Cada bloque muestra el nombre del conductor/publicador en una celda combinada y debajo las dos fechas, igual al ejemplo adjunto. Se actualiza con los registros del Resumen anual. Se muestran 20 territorios por página.</p>
  </div>
  <div class="panel">
   <div class="register-title">REGISTRO DE ASIGNACIÓN DE TERRITORIO</div>
@@ -384,30 +390,32 @@ function registerRowsForYear(){
  const y=registerYear();
  const territoryMap=new Map();
  const addTerritory=(code,name="")=>{
-  const c=String(code??"").trim();
-  if(!c)return;
+  const c=String(code??"").trim(); if(!c)return;
   if(!territoryMap.has(c))territoryMap.set(c,{codigo:c,nombre:name||""});
   else if(name&&!territoryMap.get(c).nombre)territoryMap.get(c).nombre=name;
  };
  (Array.isArray(state.territorios)?state.territorios:[]).forEach(t=>addTerritory(t.codigo,t.nombre));
  const activities=(Array.isArray(state.activities)?state.activities:[]).filter(r=>summaryDateYear(r.fecha)===y);
  const closures=(Array.isArray(state.territoryClosures)?state.territoryClosures:[]).filter(r=>summaryDateYear(r.fecha)===y);
- activities.forEach(r=>addTerritory(r.codigo));
- closures.forEach(r=>addTerritory(r.codigo));
+ activities.forEach(r=>addTerritory(r.codigo)); closures.forEach(r=>addTerritory(r.codigo));
  const source=[...territoryMap.values()].sort((a,b)=>String(a.codigo).localeCompare(String(b.codigo),"es",{numeric:true})).slice(0,20);
  while(source.length<20)source.push({codigo:String(source.length+1),nombre:""});
  return source.map(t=>{
   const code=String(t.codigo);
-  const assigned=[...new Set(activities.filter(r=>String(r.codigo??"").trim()===code).map(r=>r.fecha).filter(Boolean))].sort();
-  const completed=[...new Set(closures.filter(r=>String(r.codigo??"").trim()===code).map(r=>r.fecha).filter(Boolean))].sort();
-  const slots=Array.from({length:4},(_,i)=>({asignada:assigned[i]||"",completada:completed[i]||""}));
-  return {anio:y,codigo:code,nombre:t.nombre||"",slots,ultima:completed.length?completed[completed.length-1]:""};
+  const assigned=activities.filter(r=>String(r.codigo??"").trim()===code).sort((a,b)=>String(a.fecha).localeCompare(String(b.fecha)));
+  const completed=closures.filter(r=>String(r.codigo??"").trim()===code).sort((a,b)=>String(a.fecha).localeCompare(String(b.fecha)));
+  const slots=Array.from({length:4},(_,i)=>({
+   asignada:assigned[i]?.fecha||"",
+   completada:completed[i]?.fecha||"",
+   asignadoA:String(assigned[i]?.conductor||completed[i]?.conductor||"").trim()
+  }));
+  return {anio:y,codigo:code,nombre:t.nombre||"",slots,ultima:completed.length?completed[completed.length-1].fecha:""};
  });
 }
 function renderTerritoryAssignmentRegister(){
  const year=registerYear();$("registerYearLabel").textContent=year;
  const rows=registerRowsForYear();
- $("registerRows").innerHTML=rows.map(r=>`<tr><td class="territory-number">${esc(r.codigo)}</td><td>${esc(dateFmt(r.ultima))}</td>${r.slots.map(slot=>`<td>${esc(slot.asignada?dateFmt(slot.asignada):"")}</td><td>${esc(slot.completada?dateFmt(slot.completada):"")}</td>`).join("")}</tr>`).join("");
+ $("registerRows").innerHTML=rows.map(r=>`<tr class="register-assignee-row"><td class="territory-number" rowspan="2">${esc(r.codigo)}</td><td rowspan="2">${esc(dateFmt(r.ultima))}</td>${r.slots.map(slot=>`<td class="register-assignee" colspan="2">${esc(slot.asignadoA)}</td>`).join("")}</tr><tr class="register-dates-row">${r.slots.map(slot=>`<td>${esc(slot.asignada?dateFmt(slot.asignada):"")}</td><td>${esc(slot.completada?dateFmt(slot.completada):"")}</td>`).join("")}</tr>`).join("");
 }
 function saveTerritoryRegisterInput(input){
  const year=registerYear(),code=input.dataset.regCode,slotIndex=Number(input.dataset.regSlot),field=input.dataset.regField;
