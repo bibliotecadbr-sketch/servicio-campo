@@ -209,15 +209,29 @@ function summaryDateYear(value){
  return m?m[1]:"";
 }
 function splitSummaryValues(value){
- return String(value||"").split(/[\n;|,]+/).map(x=>x.trim()).filter(Boolean);
+ return String(value||"").split(/\\n|[\n;|,]+/).map(x=>x.trim()).filter(Boolean);
 }
 function summaryCodeMatches(value,code){
  const target=normalizeTerritoryText(code);
  return splitSummaryValues(value).some(x=>normalizeTerritoryText(x)===target);
 }
+function sameSummaryDate(a,b){
+ return summaryDateYear(a)!=="" && summaryDateYear(a)===summaryDateYear(b) &&
+ normalizeTerritoryText(a)===normalizeTerritoryText(b);
+}
+function linkedActivityCodes(programRow){
+ // Puente de compatibilidad: las filas antiguas de programación no guardaban el código oculto.
+ // Se enlazan con las actividades originales por fecha, punto de encuentro y texto del territorio.
+ const matches=(Array.isArray(state.activities)?state.activities:[]).filter(a=>{
+  if(!sameSummaryDate(dateFmt(a.fecha),programRow.fecha))return false;
+  const samePoint=normalizeTerritoryText(a.punto)===normalizeTerritoryText(programRow.punto);
+  const sameTerritory=territoryAppears(programRow.territorio,{codigo:a.codigo,nombre:a.territorio});
+  return samePoint && sameTerritory;
+ });
+ return [...new Set(matches.map(a=>String(a.codigo||"").trim()).filter(Boolean))];
+}
 function getSummaryRows(){
  const year=summaryYear();
- // The summary's assignment source is the saved bulletin/programming table, not raw activity records.
  const programRows=Array.isArray(state.format?.rows)?state.format.rows:[];
  const closureRows=Array.isArray(state.territoryClosures)?state.territoryClosures:[];
  const byCode=new Map();
@@ -227,26 +241,30 @@ function getSummaryRows(){
   if(!byCode.has(key))byCode.set(key,{codigo:display,nombre:nombre||""});
   else if(nombre&&!byCode.get(key).nombre)byCode.get(key).nombre=nombre;
  };
- state.territorios.forEach(t=>addCode(t.codigo,t.nombre));
- // Include explicit codes embedded in saved programming rows (newly generated formats).
+ (Array.isArray(state.territorios)?state.territorios:[]).forEach(t=>addCode(t.codigo,t.nombre));
+ // Los códigos se obtienen de la programación guardada; si es un formato antiguo,
+ // se recuperan desde las actividades que corresponden a cada fila programada.
  programRows.forEach(r=>{
   if(summaryDateYear(r.fecha)!==year)return;
   splitSummaryValues(r.codigo).forEach(code=>addCode(code));
+  if(!String(r.codigo||"").trim())linkedActivityCodes(r).forEach(code=>addCode(code));
  });
- // Include any territory code recorded in the selected year's closure register.
  closureRows.forEach(c=>{if(summaryDateYear(c.fecha)===year)addCode(c.codigo)});
- const programForTerritory=(t)=>programRows.filter(r=>{
+ const codesForProgramRow=r=>{
+  const explicit=splitSummaryValues(r.codigo);
+  return explicit.length?explicit:linkedActivityCodes(r);
+ };
+ const programForTerritory=t=>programRows.filter(r=>{
   if(summaryDateYear(r.fecha)!==year)return false;
-  // Prefer the explicit code carried by the programming row.
-  if(String(r.codigo||"").trim())return summaryCodeMatches(r.codigo,t.codigo);
-  // Compatibility with earlier programming tables that only had the Territorio(s) text column.
+  const codes=codesForProgramRow(r);
+  if(codes.length)return codes.some(code=>normalizeTerritoryText(code)===normalizeTerritoryText(t.codigo));
   return territoryAppears(r.territorio,t);
  });
  return [...byCode.values()].map(t=>{
   const assignmentsRows=programForTerritory(t);
-  const assignments=[...new Set(assignmentsRows.flatMap(r=>splitSummaryValues(r.fecha)).filter(d=>summaryDateYear(d)===year))].sort();
+  const assignments=[...new Set(assignmentsRows.map(r=>r.fecha).filter(d=>summaryDateYear(d)===year))].sort((a,b)=>a.localeCompare(b,"es"));
   const closureRecords=closureRows.filter(c=>normalizeTerritoryText(c.codigo)===normalizeTerritoryText(t.codigo)&&summaryDateYear(c.fecha)===year);
-  const closures=[...new Set(closureRecords.map(c=>c.fecha).filter(Boolean))].sort();
+  const closures=[...new Set(closureRecords.map(c=>c.fecha).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es"));
   const conductors=[...new Set([
    ...assignmentsRows.flatMap(r=>splitSummaryValues(r.conductor)),
    ...closureRecords.map(c=>String(c.conductor||"").trim())
@@ -259,7 +277,7 @@ function renderSummary(){
  const all=getSummaryRows(),rows=all.filter(r=>normalizeTerritoryText([r.anio,r.codigo,r.nombre,r.conductores.join(" "),r.asignaciones.map(dateFmt).join(" "),r.cierres.map(dateFmt).join(" ")].join(" ")).includes(q));
  $("summaryHeading").textContent="Resumen de territorios — "+year;
  $("summaryInfo").textContent=`${rows.length} territorios visibles · ${all.reduce((n,r)=>n+r.asignaciones.length,0)} fechas de asignación · ${all.reduce((n,r)=>n+r.cierres.length,0)} cierres en el año`;
- $("summaryRows").innerHTML=rows.length?rows.map(r=>`<tr><td>${esc(r.anio)}</td><td><b>${esc(r.codigo)}</b>${r.nombre?`<div class="muted">${esc(r.nombre)}</div>`:""}</td><td>${r.conductores.length?r.conductores.map(esc).join("<br>"):"—"}</td><td>${r.asignaciones.length?r.asignaciones.map(dateFmt).map(esc).join("<br>"):"—"}</td><td>${r.cierres.length?r.cierres.map(dateFmt).map(esc).join("<br>"):"—"}</td></tr>`).join(""):`<tr><td colspan="5" class="empty">No hay territorios registrados para ${esc(year)}. Comprueba que los territorios estén registrados y que el código o nombre aparezca en el campo “Territorio(s)” de las actividades.</td></tr>`;
+ $("summaryRows").innerHTML=rows.length?rows.map(r=>`<tr><td>${esc(r.anio)}</td><td><b>${esc(r.codigo)}</b>${r.nombre?`<div class="muted">${esc(r.nombre)}</div>`:""}</td><td>${r.conductores.length?r.conductores.map(esc).join("<br>"):"—"}</td><td>${r.asignaciones.length?r.asignaciones.map(dateFmt).map(esc).join("<br>"):"—"}</td><td>${r.cierres.length?r.cierres.map(dateFmt).map(esc).join("<br>"):"—"}</td></tr>`).join(""):`<tr><td colspan="5" class="empty">No hay filas de programación ni cierres con territorios identificables para ${esc(year)}. Comprueba que exista programación guardada para ese año o registros en “Territorios cerrados”.</td></tr>`;
 }
 $("summaryYear").value=String(new Date().getFullYear());
 $("summaryRefresh").onclick=()=>{
