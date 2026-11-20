@@ -158,7 +158,7 @@ $("tabs").addEventListener("click",e=>{const b=e.target.closest("[data-view]");i
 
 // Actividades
 function resetActivity(){$("activityForm").reset();$("activityId").value="";$("activityTitle").textContent="Agregar actividad";$("activitySave").textContent="Guardar actividad";$("activityCancel").classList.add("hidden")}
-$("activityForm").addEventListener("submit",e=>{e.preventDefault();const d={fecha:$("fecha").value,codigo:$("codigoActividad").value.trim(),hora:$("hora").value.trim(),conductor:$("conductor").value.trim(),territorio:$("territorio").value.trim(),punto:$("punto").value.trim(),observaciones:$("observaciones").value.trim()};if(!d.fecha||!d.codigo||!d.hora||!d.conductor||!d.territorio||!d.punto){notify("Completa todos los campos obligatorios.");return}const id=$("activityId").value;if(id){const i=state.activities.findIndex(x=>x.id===id);if(i>=0)state.activities[i]={...state.activities[i],...d};notify("Actividad actualizada.")}else{state.activities.push({id:uid(),...d,creado:new Date().toISOString()});notify("Actividad guardada.")}save();resetActivity();renderActivities();refreshOptions()});
+$("activityForm").addEventListener("submit",e=>{e.preventDefault();const d={fecha:$("fecha").value,codigo:$("codigoActividad").value.trim(),hora:$("hora").value.trim(),conductor:$("conductor").value.trim(),territorio:$("territorio").value.trim(),punto:$("punto").value.trim(),observaciones:$("observaciones").value.trim()};if(!d.fecha||!d.codigo||!d.hora||!d.conductor||!d.territorio||!d.punto){notify("Completa todos los campos obligatorios.");return}const id=$("activityId").value;if(id){const i=state.activities.findIndex(x=>x.id===id);if(i>=0)state.activities[i]={...state.activities[i],...d};notify("Actividad actualizada.")}else{state.activities.push({id:uid(),...d,creado:new Date().toISOString()});notify("Actividad guardada.")}save();resetActivity();renderActivities();refreshOptions();if(!$("view-resumen").classList.contains("hidden"))renderSummary()});
 $("activityCancel").onclick=resetActivity;$("activityClear").onclick=()=>setTimeout(resetActivity,0);
 function renderActivities(){const q=$("activitySearch").value.toLocaleLowerCase("es"),m=$("activityMonth").value;const arr=[...state.activities].sort(sortByDate).filter(x=>(!m||(x.fecha||"").startsWith(m))&&(!q||[x.fecha,x.codigo,x.hora,x.conductor,x.territorio,x.punto,x.observaciones].join(" ").toLocaleLowerCase("es").includes(q)));$("activityCount").textContent=`${arr.length} actividades visibles · ${state.activities.length} en total`;$("activityRows").innerHTML=arr.length?arr.map(x=>`<tr><td>${esc(dateFmt(x.fecha))}</td><td><b>${esc(x.codigo||"—")}</b></td><td>${esc(x.hora)}</td><td><b>${esc(x.conductor)}</b></td><td>${esc(x.territorio)}</td><td>${esc(x.punto)}</td><td class="no-print"><div class="actions"><button class="small secondary" data-act="edit" data-id="${esc(x.id)}">Editar</button><button class="small danger" data-act="del" data-id="${esc(x.id)}">Eliminar</button></div></td></tr>`).join(""):`<tr><td class="empty" colspan="7">No hay actividades registradas.</td></tr>`}
 $("activityRows").onclick=e=>{const b=e.target.closest("[data-act]");if(!b)return;const x=state.activities.find(r=>r.id===b.dataset.id);if(!x)return;if(b.dataset.act==="edit"){$("activityId").value=x.id;$("fecha").value=x.fecha||"";$("codigoActividad").value=x.codigo||"";["hora","conductor","territorio","punto","observaciones"].forEach(k=>$(k).value=x[k]||"");$("activityTitle").textContent="Editar actividad";$("activitySave").textContent="Guardar cambios";$("activityCancel").classList.remove("hidden");window.scrollTo({top:0,behavior:"smooth"})}else if(confirm("¿Eliminar esta actividad?")){state.activities=state.activities.filter(r=>r.id!==x.id);save();renderActivities();notify("Actividad eliminada.")}};
@@ -182,7 +182,7 @@ Object.entries(catalogs).forEach(([key,c])=>{
 // Cierre de territorio: registro independiente vinculado por número o código
 function resetClosure(){$("closureForm").reset();$("closureId").value="";$("closureTitle").textContent="Cierre de territorio";$("closureSave").textContent="Registrar cierre";$("closureCancel").classList.add("hidden")}
 function renderClosures(){const q=$("closureSearch").value.toLocaleLowerCase("es"),arr=[...state.territoryClosures].sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));const filtered=arr.filter(x=>[x.codigo,x.conductor,x.fecha].join(" ").toLocaleLowerCase("es").includes(q));$("closureCount").textContent=`${filtered.length} cierres registrados`;$("closureRows").innerHTML=filtered.length?filtered.map(x=>`<tr><td><b>${esc(x.codigo)}</b></td><td>${esc(x.conductor||"—")}</td><td>${esc(dateFmt(x.fecha))}</td><td><div class="actions"><button class="small secondary" data-closure="edit" data-id="${esc(x.id)}">Editar</button><button class="small danger" data-closure="del" data-id="${esc(x.id)}">Eliminar</button></div></td></tr>`).join(""):`<tr><td colspan="4" class="empty">No hay cierres registrados.</td></tr>`}
-$("closureForm").addEventListener("submit",e=>{e.preventDefault();const data={codigo:$("closureCode").value.trim(),conductor:$("closureConductor").value.trim(),fecha:$("closureDate").value};if(!data.codigo){notify("Ingresa el número o código del territorio.");return}const id=$("closureId").value;if(id){const i=state.territoryClosures.findIndex(x=>x.id===id);if(i>=0)state.territoryClosures[i]={...state.territoryClosures[i],...data};notify("Cierre actualizado.")}else{state.territoryClosures.push({id:uid(),...data,creado:new Date().toISOString()});notify("Cierre de territorio registrado.")}save();resetClosure();renderClosures()});
+$("closureForm").addEventListener("submit",e=>{e.preventDefault();const data={codigo:$("closureCode").value.trim(),conductor:$("closureConductor").value.trim(),fecha:$("closureDate").value};if(!data.codigo){notify("Ingresa el número o código del territorio.");return}const id=$("closureId").value;if(id){const i=state.territoryClosures.findIndex(x=>x.id===id);if(i>=0)state.territoryClosures[i]={...state.territoryClosures[i],...data};notify("Cierre actualizado.")}else{state.territoryClosures.push({id:uid(),...data,creado:new Date().toISOString()});notify("Cierre de territorio registrado.")}save();resetClosure();renderClosures();if(!$("view-resumen").classList.contains("hidden"))renderSummary()});
 $("closureCancel").onclick=resetClosure;$("closureClear").onclick=()=>setTimeout(resetClosure,0);$("closureSearch").oninput=renderClosures;$("closureRows").addEventListener("click",e=>{const b=e.target.closest("[data-closure]");if(!b)return;const x=state.territoryClosures.find(r=>r.id===b.dataset.id);if(!x)return;if(b.dataset.closure==="edit"){$("closureId").value=x.id;$("closureCode").value=x.codigo||"";$("closureConductor").value=x.conductor||"";$("closureDate").value=x.fecha||"";$("closureTitle").textContent="Editar cierre de territorio";$ ("closureSave").textContent="Guardar cambios";$ ("closureCancel").classList.remove("hidden");window.scrollTo({top:0,behavior:"smooth"})}else if(confirm("¿Eliminar este registro de cierre?")){state.territoryClosures=state.territoryClosures.filter(r=>r.id!==x.id);save();renderClosures();notify("Cierre eliminado.")}});
 
 // Resumen anual: fechas de asignación derivadas de actividades y fechas de cierre registradas
@@ -201,24 +201,36 @@ function territoryAppears(activityText,territory){
 }
 function getSummaryRows(){
  const year=summaryYear();
- // Include territories from the catalog and also codes that exist only in closure records.
+ // Construir el resumen desde las tres fuentes: catálogo, actividades y cierres.
+ // Así no se pierde un código escrito manualmente en Agregar actividad.
  const byCode=new Map();
- state.territorios.forEach(t=>{
-  const key=normalizeTerritoryText(t.codigo);
-  if(key)byCode.set(key,{codigo:String(t.codigo||"").trim(),nombre:t.nombre||""});
+ const addCode=(code,nombre="")=>{
+  const display=String(code||"").trim();
+  const key=normalizeTerritoryText(display);
+  if(!key)return;
+  if(!byCode.has(key))byCode.set(key,{codigo:display,nombre:nombre||""});
+  else if(nombre&&!byCode.get(key).nombre)byCode.get(key).nombre=nombre;
+ };
+ state.territorios.forEach(t=>addCode(t.codigo,t.nombre));
+ state.activities.filter(a=>String(a.fecha||"").slice(0,4)===year).forEach(a=>{
+  if(a.codigo)addCode(a.codigo);
+  else {
+   // Compatibility with activities created before the required Código field existed.
+   state.territorios.forEach(t=>{if(territoryAppears(a.territorio,t))addCode(t.codigo,t.nombre)});
+  }
  });
- state.territoryClosures.forEach(c=>{
-  const key=normalizeTerritoryText(c.codigo);
-  if(key&&!byCode.has(key))byCode.set(key,{codigo:String(c.codigo||"").trim(),nombre:""});
- });
+ state.territoryClosures.filter(c=>String(c.fecha||"").slice(0,4)===year).forEach(c=>addCode(c.codigo));
  return [...byCode.values()].map(t=>{
   const matchingActivities=state.activities.filter(a=>{
-  if(String(a.fecha||"").slice(0,4)!==year)return false;
-  const activityCode=normalizeTerritoryText(a.codigo);
-  return activityCode?activityCode===normalizeTerritoryText(t.codigo):territoryAppears(a.territorio,t);
- });
+   if(String(a.fecha||"").slice(0,4)!==year)return false;
+   const activityCode=normalizeTerritoryText(a.codigo);
+   if(activityCode)return activityCode===normalizeTerritoryText(t.codigo);
+   return territoryAppears(a.territorio,t);
+  });
   const assignments=[...new Set(matchingActivities.map(a=>a.fecha).filter(Boolean))].sort();
-  const closureRecords=state.territoryClosures.filter(c=>normalizeTerritoryText(c.codigo)===normalizeTerritoryText(t.codigo)&&String(c.fecha||"").slice(0,4)===year);
+  const closureRecords=state.territoryClosures.filter(c=>
+   normalizeTerritoryText(c.codigo)===normalizeTerritoryText(t.codigo)&&String(c.fecha||"").slice(0,4)===year
+  );
   const closures=[...new Set(closureRecords.map(c=>c.fecha).filter(Boolean))].sort();
   const conductors=[...new Set([
    ...matchingActivities.map(a=>String(a.conductor||"").trim()),
@@ -242,7 +254,7 @@ $("summaryRefresh").onclick=()=>{
   state.territorios=readLatest(KEY+"_territorios",state.territorios);
   state.territoryClosures=readLatest(KEY+"_cierres_territorio",state.territoryClosures);
   renderSummary();
-  notify("Resumen anual actualizado con los registros guardados.");
+  notify(`Resumen actualizado: ${state.activities.length} actividades, ${state.territorios.length} territorios y ${state.territoryClosures.length} cierres leídos.`);
  }catch(err){renderSummary();notify("No se pudieron recargar los datos guardados; se muestra la información de esta página.")}
 };
 $("summaryYear").addEventListener("change",renderSummary);
