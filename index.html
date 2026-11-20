@@ -87,7 +87,7 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#fafafa}.empty{
  <label for="newPasswordConfirmInput">Confirmar nueva contraseña</label><input id="newPasswordConfirmInput" type="password" required minlength="4" autocomplete="new-password">
  <p id="changePasswordError" class="password-error" role="alert"></p><div class="toolbar"><button type="submit">Guardar contraseña</button><button type="button" class="secondary" id="cancelPasswordChange">Cancelar</button></div>
  </form></div></div>
-<header><div class="wrap"><div><h1>Servicio del Campo</h1><p>Organización de actividades, publicadores, territorios y puntos de encuentro</p></div><div class="toolbar"><span class="status" id="saveStatus">Guardado local</span><button type="button" id="changePasswordBtn" class="secondary hidden">Modificar contraseña</button></div></div></header>
+<header><div class="wrap"><div><h1>Servicio del Campo</h1><p>Organización de actividades, publicadores, territorios y puntos de encuentro</p></div><div class="toolbar"><span class="status" id="saveStatus">Guardado local</span><button type="button" id="lockProgramBtn" class="secondary hidden">Bloquear sistema</button><button type="button" id="changePasswordBtn" class="secondary hidden">Modificar contraseña</button></div></div></header>
 <nav class="no-print"><div class="tabs" id="tabs">
 <button class="tab active" data-view="actividades">Actividades</button>
 <button class="tab" data-view="publicadores">Publicadores</button>
@@ -489,7 +489,20 @@ async function checkPassword(password){
  const actual=await digestPassword(password,unb64(data.salt)),expected=unb64(data.hash);
  return actual.length===expected.length&&actual.every((v,i)=>v===expected[i]);
 }
-function unlockApp(){$("passwordGate").classList.add("hidden");$("changePasswordBtn").classList.remove("hidden")}
+function unlockApp(){$("passwordGate").classList.add("hidden");$("changePasswordBtn").classList.remove("hidden");$("lockProgramBtn").classList.remove("hidden")}
+function lockProgram(){
+ passwordMode="login";
+ $("passwordGateTitle").textContent="Sistema bloqueado";
+ $("passwordGateMessage").textContent="Para volver a utilizar Servicio del Campo, introduce la contraseña.";
+ $("passwordGateLabel").textContent="Contraseña";
+ $("passwordGateInput").value="";
+ $("passwordGateError").textContent="";
+ $("passwordConfirmWrap").classList.add("hidden");
+ $("passwordGateSubmit").textContent="Desbloquear sistema";
+ $("passwordGate").classList.remove("hidden");
+ $("passwordGateInput").focus();
+}
+$("lockProgramBtn").addEventListener("click",lockProgram);
 function configureGate(){
  passwordMode=localStorage.getItem(PASSWORD_KEY)?"login":"setup";
  $("passwordGateTitle").textContent=passwordMode==="setup"?"Crear contraseña de apertura":"Acceso al programa";
