@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#172554">
+<title>Servicio del Campo | Gestión local</title>
+<style>
+:root{--navy:#172554;--blue:#4f46e5;--blue2:#4338ca;--bg:#f1f5f9;--ink:#1e293b;--muted:#64748b;--line:#e2e8f0;--green:#047857;--red:#be123c}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{background:var(--navy);color:white;padding:18px 20px;box-shadow:0 2px 8px #0f172a22}
+.wrap{max-width:1100px;margin:auto;padding:0 16px}header .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font-size:21px;margin:0}header p{margin:3px 0 0;color:#c7d2fe;font-size:13px}
+main{max-width:1100px;margin:24px auto;padding:0 16px}
+.panel{background:white;border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:18px;box-shadow:0 2px 8px #0f172a08}
+.panel h2{font-size:18px;margin:0 0 14px}
+.toolbar{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+button,.file-label{border:0;border-radius:10px;padding:10px 14px;font-weight:650;font-size:13px;cursor:pointer;background:var(--blue);color:white}
+button:hover,.file-label:hover{background:var(--blue2)}button.secondary{background:#e2e8f0;color:#334155}button.secondary:hover{background:#cbd5e1}
+button.danger{background:#fff1f2;color:var(--red)}button.danger:hover{background:#ffe4e6}
+button.green{background:var(--green)}button.small{padding:7px 10px;font-size:12px}
+label{display:block;font-size:12px;font-weight:700;color:#475569;margin:0 0 5px}
+input{width:100%;border:1px solid #cbd5e1;border-radius:9px;padding:10px 11px;background:white;color:var(--ink);font:inherit;min-width:0}
+input:focus{outline:2px solid #a5b4fc;border-color:var(--blue)}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.field.full{grid-column:1/-1}
+.actions{display:flex;gap:7px;flex-wrap:wrap}
+.topline{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.search{max-width:330px}
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;min-width:760px}
+th,td{text-align:left;padding:12px 13px;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:#f8fafc;color:#475569;font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+td{font-size:13px}tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#fafafa}
+.empty{text-align:center;color:var(--muted);padding:28px}
+.muted{color:var(--muted);font-size:12px}.status{font-size:12px;color:#166534;background:#dcfce7;padding:5px 9px;border-radius:999px}
+footer{text-align:center;color:var(--muted);font-size:12px;padding:12px 16px 30px}
+#toast{position:fixed;right:16px;bottom:16px;background:#0f172a;color:white;padding:12px 16px;border-radius:10px;box-shadow:0 8px 25px #0002;display:none;z-index:5;max-width:min(92vw,420px)}
+.hidden{display:none!important}
+@media(max-width:640px){.grid{grid-template-columns:1fr}.field.full{grid-column:auto}.panel{padding:15px}h1{font-size:19px}.search{max-width:none;width:100%}}
+@media print{
+ @page{size:landscape;margin:12mm}
+ body{background:white;color:black;font-size:11px}
+ header{background:white!important;color:black!important;box-shadow:none;padding:0 0 12px}
+ header p{color:#333}
+ main{max-width:none;margin:0;padding:0}
+ .no-print,footer,#toast{display:none!important}
+ .panel{border:0;box-shadow:none;padding:0;margin:0 0 12px}
+ .table-wrap{overflow:visible;border:0}
+ table{min-width:0;width:100%}
+ th,td{border:1px solid #555!important;padding:6px 7px;color:black!important}
+ th{background:#e5e7eb!important}
+}
+</style>
+</head>
+<body>
+<header>
+ <div class="wrap">
+  <div><h1>Servicio del Campo</h1><p>Organización de reuniones para el servicio del campo</p></div>
+  <span class="status" id="saveStatus">Guardado local</span>
+ </div>
+</header>
+<main>
+ <section class="panel no-print">
+  <div class="topline"><h2 id="formTitle">Agregar actividad</h2><span class="muted">Los campos marcados son obligatorios</span></div>
+  <form id="recordForm">
+   <input type="hidden" id="recordId">
+   <div class="grid">
+    <div class="field"><label for="fecha">Fecha *</label><input id="fecha" type="date" required></div>
+    <div class="field"><label for="hora">Hora *</label><input id="hora" type="text" placeholder="Ej. 09:00 a. m." required list="horas"></div>
+    <div class="field"><label for="conductor">Conductor *</label><input id="conductor" type="text" placeholder="Nombre del conductor" required list="conductores"></div>
+    <div class="field"><label for="territorio">Territorio(s) *</label><input id="territorio" type="text" placeholder="Ej. Territorio 12 y 15" required list="territorios"></div>
+    <div class="field full"><label for="punto">Punto de encuentro *</label><input id="punto" type="text" placeholder="Dirección o lugar de encuentro" required list="puntos"></div>
+   </div>
+   <datalist id="horas"></datalist><datalist id="conductores"></datalist><datalist id="territorios"></datalist><datalist id="puntos"></datalist>
+   <div class="toolbar" style="margin-top:16px">
+    <button type="submit" id="saveBtn">Guardar actividad</button>
+    <button type="button" class="secondary hidden" id="cancelEdit">Cancelar edición</button>
+    <button type="reset" class="secondary" id="clearForm">Limpiar</button>
+   </div>
+  </form>
+ </section>
+
+ <section class="panel">
+  <div class="topline">
+   <div><h2>Programación del servicio del campo</h2><div class="muted" id="countLabel">0 actividades registradas</div></div>
+   <input class="search no-print" id="search" type="search" placeholder="Buscar fecha, conductor, territorio o punto…">
+  </div>
+  <div class="toolbar no-print" style="margin-bottom:13px">
+   <label for="monthFilter" style="margin:0">Filtrar por mes:</label>
+   <input id="monthFilter" type="month" style="max-width:190px">
+   <button class="secondary small" id="clearFilter">Mostrar todos</button>
+   <button class="secondary small" id="printBtn">Imprimir</button>
+  </div>
+  <div class="table-wrap">
+   <table>
+    <thead><tr><th>Fecha</th><th>Hora</th><th>Conductor</th><th>Territorio(s)</th><th>Punto de encuentro</th><th class="no-print">Acciones</th></tr></thead>
+    <tbody id="recordsBody"></tbody>
+   </table>
+  </div>
+ </section>
+
+ <section class="panel no-print">
+  <h2>Exportar y proteger los datos</h2>
+  <p class="muted">Descarga la programación en CSV para abrirla con Excel o guarda una copia completa en JSON.</p>
+  <div class="toolbar">
+   <button class="green" id="csvBtn">Exportar CSV (Excel)</button>
+   <button class="secondary" id="backupBtn">Descargar copia JSON</button>
+   <label class="file-label" for="restoreFile">Restaurar copia JSON</label>
+   <input id="restoreFile" type="file" accept=".json,application/json" class="hidden">
+  </div>
+ </section>
+ <section class="panel no-print">
+  <h2>Información importante</h2>
+  <p class="muted">Los registros se guardan en el almacenamiento local del navegador. No se sincronizan entre dispositivos ni se suben a GitHub. Descarga copias JSON periódicamente y antes de borrar los datos del navegador.</p>
+ </section>
+</main>
+<footer>Servicio del Campo · Aplicación local · No requiere Firebase</footer>
+<div id="toast" role="status" aria-live="polite"></div>
+<script>
+"use strict";
+const STORAGE_KEY = "servicioDelCampo_local_v1";
+let records = loadRecords();
+const $ = id => document.getElementById(id);
+function loadRecords(){
+ try { const raw=localStorage.getItem(STORAGE_KEY); const parsed=raw?JSON.parse(raw):[]; return Array.isArray(parsed)?parsed:[]; }
+ catch(e){ console.error(e); return []; }
+}
+function persist(){
+ try { localStorage.setItem(STORAGE_KEY,JSON.stringify(records)); $("saveStatus").textContent="Guardado local"; }
+ catch(e){ $("saveStatus").textContent="Error al guardar"; toast("No se pudo guardar. Exporta una copia y revisa el espacio disponible."); }
+}
+function toast(message){
+ const el=$("toast"); el.textContent=message; el.style.display="block";
+ clearTimeout(toast.timer); toast.timer=setTimeout(()=>el.style.display="none",3200);
+}
+function esc(value){
+ return String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+}
+function dateLabel(value){
+ if(!value)return "—";
+ const parts=value.split("-"); return parts.length===3?`${parts[2]}/${parts[1]}/${parts[0]}`:value;
+}
+function sorted(list){return [...list].sort((a,b)=>(a.fecha||"").localeCompare(b.fecha||"")||(a.hora||"").localeCompare(b.hora||""));}
+function updateSuggestions(){
+ const fields=[["hora","horas"],["conductor","conductores"],["territorio","territorios"],["punto","puntos"]];
+ fields.forEach(([key,listId])=>{
+  const vals=[...new Set(records.map(r=>(r[key]||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es"));
+  $(listId).innerHTML=vals.map(v=>`<option value="${esc(v)}"></option>`).join("");
+ });
+}
+function render(){
+ const query=$("search").value.trim().toLocaleLowerCase("es");
+ const month=$("monthFilter").value;
+ const visible=sorted(records).filter(r=>{
+  const text=[r.fecha,r.hora,r.conductor,r.territorio,r.punto].join(" ").toLocaleLowerCase("es");
+  return (!month||(r.fecha||"").startsWith(month))&&(!query||text.includes(query));
+ });
+ $("countLabel").textContent=`${visible.length} ${visible.length===1?"actividad visible":"actividades visibles"} · ${records.length} en total`;
+ $("recordsBody").innerHTML=visible.length?visible.map(r=>`
+  <tr>
+   <td>${esc(dateLabel(r.fecha))}</td><td>${esc(r.hora)}</td><td><strong>${esc(r.conductor)}</strong></td>
+   <td>${esc(r.territorio)}</td><td>${esc(r.punto)}</td>
+   <td class="no-print"><div class="actions">
+    <button class="small secondary" data-action="edit" data-id="${esc(r.id)}" aria-label="Editar">Editar</button>
+    <button class="small danger" data-action="delete" data-id="${esc(r.id)}" aria-label="Eliminar">Eliminar</button>
+   </div></td>
+  </tr>`).join(""):`<tr><td colspan="6" class="empty">No hay actividades para mostrar.</td></tr>`;
+ updateSuggestions();
+}
+function resetForm(){
+ $("recordForm").reset(); $("recordId").value=""; $("formTitle").textContent="Agregar actividad";
+ $("saveBtn").textContent="Guardar actividad"; $("cancelEdit").classList.add("hidden");
+}
+$("recordForm").addEventListener("submit",e=>{
+ e.preventDefault();
+ const data={fecha:$("fecha").value,hora:$("hora").value.trim(),conductor:$("conductor").value.trim(),territorio:$("territorio").value.trim(),punto:$("punto").value.trim()};
+ if(Object.values(data).some(v=>!v)){toast("Completa todos los campos.");return;}
+ const id=$("recordId").value;
+ if(id){const i=records.findIndex(r=>r.id===id);if(i>=0)records[i]={...records[i],...data};toast("Actividad actualizada.");}
+ else{records.push({id:crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random(),...data,creado:new Date().toISOString()});toast("Actividad guardada.");}
+ persist();resetForm();render();
+});
+$("cancelEdit").addEventListener("click",resetForm);
+$("clearForm").addEventListener("click",()=>setTimeout(resetForm,0));
+$("recordsBody").addEventListener("click",e=>{
+ const btn=e.target.closest("button[data-action]");if(!btn)return;
+ const rec=records.find(r=>r.id===btn.dataset.id);if(!rec)return;
+ if(btn.dataset.action==="edit"){
+  $("recordId").value=rec.id;$("fecha").value=rec.fecha||"";$("hora").value=rec.hora||"";
+  $("conductor").value=rec.conductor||"";$("territorio").value=rec.territorio||"";$("punto").value=rec.punto||"";
+  $("formTitle").textContent="Editar actividad";$("saveBtn").textContent="Guardar cambios";$("cancelEdit").classList.remove("hidden");
+  window.scrollTo({top:0,behavior:"smooth"});
+ }else if(btn.dataset.action==="delete"&&confirm("¿Deseas eliminar esta actividad?")){
+  records=records.filter(r=>r.id!==rec.id);persist();render();toast("Actividad eliminada.");
+ }
+});
+$("search").addEventListener("input",render);
+$("monthFilter").addEventListener("change",render);
+$("clearFilter").addEventListener("click",()=>{$("monthFilter").value="";$("search").value="";render();});
+$("printBtn").addEventListener("click",()=>window.print());
+function download(filename,content,type){
+ const blob=new Blob([content],{type});const url=URL.createObjectURL(blob);const a=document.createElement("a");
+ a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+}
+function csvCell(v){return '"'+String(v??"").replace(/"/g,'""')+'"';}
+$("csvBtn").addEventListener("click",()=>{
+ const rows=[["Fecha","Hora","Conductor","Territorio(s)","Punto de encuentro"],...sorted(records).map(r=>[dateLabel(r.fecha),r.hora,r.conductor,r.territorio,r.punto])];
+ const csv="\uFEFF"+rows.map(row=>row.map(csvCell).join(";")).join("\r\n");
+ download("servicio_del_campo.csv",csv,"text/csv;charset=utf-8");toast("Archivo CSV preparado para Excel.");
+});
+$("backupBtn").addEventListener("click",()=>{
+ const backup={app:"Servicio del Campo",version:1,exportado:new Date().toISOString(),records};
+ download("copia_servicio_del_campo.json",JSON.stringify(backup,null,2),"application/json");toast("Copia de seguridad descargada.");
+});
+$("restoreFile").addEventListener("change",async e=>{
+ const file=e.target.files[0];if(!file)return;
+ try{
+  const obj=JSON.parse(await file.text());const incoming=Array.isArray(obj)?obj:obj.records;
+  if(!Array.isArray(incoming)||!incoming.every(r=>r&&typeof r==="object"&&r.fecha!==undefined&&r.hora!==undefined&&r.conductor!==undefined&&r.territorio!==undefined&&r.punto!==undefined)){
+   throw new Error("El archivo no tiene el formato esperado.");
+  }
+  if(!confirm(`Se reemplazarán los ${records.length} registros actuales por ${incoming.length} registros de la copia. ¿Continuar?`))return;
+  records=incoming.map(r=>({id:String(r.id||((Date.now())+Math.random())),fecha:String(r.fecha||""),hora:String(r.hora||""),conductor:String(r.conductor||""),territorio:String(r.territorio||""),punto:String(r.punto||""),creado:r.creado||""}));
+  persist();resetForm();render();toast("Copia restaurada correctamente.");
+ }catch(err){alert("No se pudo restaurar la copia: "+err.message);}
+ finally{e.target.value="";}
+});
+render();
+</script>
+</body>
+</html>
