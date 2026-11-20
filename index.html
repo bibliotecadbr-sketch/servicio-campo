@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#172554">
-<title>Servicio del Campo | Gestión local v3</title>
+<title>Servicio del Campo | Gestión local v5</title>
 <style>
 :root{--navy:#172554;--blue:#4f46e5;--blue2:#4338ca;--bg:#f1f5f9;--ink:#1e293b;--muted:#64748b;--line:#e2e8f0;--green:#047857;--red:#be123c}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -86,6 +86,12 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#fafafa}.empty{
  <div><label>Número o código *</label><input id="terrCodigo" required placeholder="Ej. 01"></div><div><label>Nombre o zona *</label><input id="terrNombre" required placeholder="Ej. Centro"></div><div class="full"><label>Descripción / referencia</label><textarea id="terrNotas"></textarea></div></div>
  <div class="toolbar" style="margin-top:12px"><button>Guardar territorio</button><button type="button" class="secondary hidden" id="terrCancel">Cancelar</button></div></form></div>
  <div class="panel"><div class="topline"><h2>Territorios registrados</h2><input class="search" id="terrSearch" placeholder="Buscar territorio…"></div><div class="table-wrap"><table><thead><tr><th>Código</th><th>Nombre / zona</th><th>Descripción</th><th>Acciones</th></tr></thead><tbody id="terrRows"></tbody></table></div></div>
+ <div class="panel no-print"><h2 id="closureTitle">Cierre de territorio</h2><form id="closureForm"><input type="hidden" id="closureId"><div class="grid">
+ <div><label for="closureCode">Número o código *</label><input id="closureCode" required list="closureTerritoryOptions" placeholder="Escribe o selecciona el código"><datalist id="closureTerritoryOptions"></datalist></div>
+ <div><label for="closureConductor">Conductor</label><input id="closureConductor" list="closureConductorOptions" placeholder="Selecciona o escribe un conductor"><datalist id="closureConductorOptions"></datalist></div>
+ <div><label for="closureDate">Fecha de cierre</label><input id="closureDate" type="date"></div>
+ </div><div class="toolbar" style="margin-top:12px"><button type="submit" id="closureSave">Registrar cierre</button><button type="button" class="secondary hidden" id="closureCancel">Cancelar edición</button><button type="reset" class="secondary" id="closureClear">Limpiar</button></div></form></div>
+ <div class="panel"><div class="topline"><div><h2>Territorios cerrados</h2><div class="muted" id="closureCount"></div></div><input class="search" id="closureSearch" placeholder="Buscar cierre…"></div><div class="table-wrap"><table><thead><tr><th>Número o código</th><th>Conductor</th><th>Fecha de cierre</th><th>Acciones</th></tr></thead><tbody id="closureRows"></tbody></table></div></div>
 </section>
 <section id="view-formato" class="view hidden">
  <div class="panel no-print"><div class="topline"><div><h2>Formato para cartelera</h2><div class="muted">Genera una tabla desde las actividades y personalízala antes de imprimir.</div></div></div>
@@ -107,9 +113,9 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#fafafa}.empty{
 const KEY="servicioDelCampo_local_v1", FORMAT_KEY="servicioDelCampo_formato_v1";
 const $=id=>document.getElementById(id);
 const uid=()=>window.crypto?.randomUUID?crypto.randomUUID():String(Date.now())+Math.random().toString(16).slice(2);
-const state={activities:read(KEY,[]),publicadores:read(KEY+"_publicadores",[]),lugares:read(KEY+"_lugares",[]),territorios:read(KEY+"_territorios",[]),format:read(FORMAT_KEY,null)};
+const state={activities:read(KEY,[]),publicadores:read(KEY+"_publicadores",[]),lugares:read(KEY+"_lugares",[]),territorios:read(KEY+"_territorios",[]),territoryClosures:read(KEY+"_cierres_territorio",[]),format:read(FORMAT_KEY,null)};
 function read(k,fallback){try{const v=localStorage.getItem(k);return v?JSON.parse(v):fallback}catch(e){return fallback}}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(state.activities));localStorage.setItem(KEY+"_publicadores",JSON.stringify(state.publicadores));localStorage.setItem(KEY+"_lugares",JSON.stringify(state.lugares));localStorage.setItem(KEY+"_territorios",JSON.stringify(state.territorios));localStorage.setItem(FORMAT_KEY,JSON.stringify(state.format));$("saveStatus").textContent="Guardado local"}catch(e){$("saveStatus").textContent="Error al guardar";notify("No se pudo guardar. Descarga una copia de seguridad.")}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state.activities));localStorage.setItem(KEY+"_publicadores",JSON.stringify(state.publicadores));localStorage.setItem(KEY+"_lugares",JSON.stringify(state.lugares));localStorage.setItem(KEY+"_territorios",JSON.stringify(state.territorios));localStorage.setItem(KEY+"_cierres_territorio",JSON.stringify(state.territoryClosures));localStorage.setItem(FORMAT_KEY,JSON.stringify(state.format));$("saveStatus").textContent="Guardado local"}catch(e){$("saveStatus").textContent="Error al guardar";notify("No se pudo guardar. Descarga una copia de seguridad.")}}
 function notify(s){const t=$("toast");t.textContent=s;t.style.display="block";clearTimeout(notify.timer);notify.timer=setTimeout(()=>t.style.display="none",3000)}
 function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function dateFmt(v){if(!v)return "—";const p=v.split("-");return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:v}
@@ -119,6 +125,8 @@ function refreshOptions(){
  setOptions("territorioOptions",state.territorios,x=>`${x.codigo} - ${x.nombre}`);
  setOptions("lugarOptions",state.lugares,x=>x.direccion?`${x.nombre} — ${x.direccion}`:x.nombre);
  setOptions("conductorOptions",state.publicadores.filter(x=>x.puedeConducir==="si"),x=>x.nombre);
+ setOptions("closureTerritoryOptions",state.territorios,x=>x.codigo);
+ setOptions("closureConductorOptions",state.publicadores.filter(x=>x.puedeConducir==="si"),x=>x.nombre);
  setOptions("horaOptions",state.activities,x=>x.hora);
 }
 function switchView(v){document.querySelectorAll(".view").forEach(x=>x.classList.add("hidden"));$("view-"+v).classList.remove("hidden");document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.view===v));if(v==="formato")renderFormat();if(v==="actividades")renderActivities()}
@@ -147,6 +155,12 @@ Object.entries(catalogs).forEach(([key,c])=>{
  $(c.rows).addEventListener("click",e=>{const b=e.target.closest("[data-op]");if(!b)return;const item=state[c.items].find(x=>x.id===b.dataset.id);if(!item)return;if(b.dataset.op==="edit"){const vals=c.values(item);c.fields.forEach((id,i)=>$(id).value=vals[i]||"");$(c.form).querySelector('input[type="hidden"]').value=item.id;$(c.cancel).classList.remove("hidden");$(c.title).textContent="Editar registro"}else if(confirm("¿Eliminar este registro?")){state[c.items]=state[c.items].filter(x=>x.id!==item.id);save();renderCatalog(key);refreshOptions();notify("Registro eliminado.")}});
 });
 
+// Cierre de territorio: registro independiente vinculado por número o código
+function resetClosure(){$("closureForm").reset();$("closureId").value="";$("closureTitle").textContent="Cierre de territorio";$("closureSave").textContent="Registrar cierre";$("closureCancel").classList.add("hidden")}
+function renderClosures(){const q=$("closureSearch").value.toLocaleLowerCase("es"),arr=[...state.territoryClosures].sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));const filtered=arr.filter(x=>[x.codigo,x.conductor,x.fecha].join(" ").toLocaleLowerCase("es").includes(q));$("closureCount").textContent=`${filtered.length} cierres registrados`;$("closureRows").innerHTML=filtered.length?filtered.map(x=>`<tr><td><b>${esc(x.codigo)}</b></td><td>${esc(x.conductor||"—")}</td><td>${esc(dateFmt(x.fecha))}</td><td><div class="actions"><button class="small secondary" data-closure="edit" data-id="${esc(x.id)}">Editar</button><button class="small danger" data-closure="del" data-id="${esc(x.id)}">Eliminar</button></div></td></tr>`).join(""):`<tr><td colspan="4" class="empty">No hay cierres registrados.</td></tr>`}
+$("closureForm").addEventListener("submit",e=>{e.preventDefault();const data={codigo:$("closureCode").value.trim(),conductor:$("closureConductor").value.trim(),fecha:$("closureDate").value};if(!data.codigo){notify("Ingresa el número o código del territorio.");return}const id=$("closureId").value;if(id){const i=state.territoryClosures.findIndex(x=>x.id===id);if(i>=0)state.territoryClosures[i]={...state.territoryClosures[i],...data};notify("Cierre actualizado.")}else{state.territoryClosures.push({id:uid(),...data,creado:new Date().toISOString()});notify("Cierre de territorio registrado.")}save();resetClosure();renderClosures()});
+$("closureCancel").onclick=resetClosure;$("closureClear").onclick=()=>setTimeout(resetClosure,0);$("closureSearch").oninput=renderClosures;$("closureRows").addEventListener("click",e=>{const b=e.target.closest("[data-closure]");if(!b)return;const x=state.territoryClosures.find(r=>r.id===b.dataset.id);if(!x)return;if(b.dataset.closure==="edit"){$("closureId").value=x.id;$("closureCode").value=x.codigo||"";$("closureConductor").value=x.conductor||"";$("closureDate").value=x.fecha||"";$("closureTitle").textContent="Editar cierre de territorio";$ ("closureSave").textContent="Guardar cambios";$ ("closureCancel").classList.remove("hidden");window.scrollTo({top:0,behavior:"smooth"})}else if(confirm("¿Eliminar este registro de cierre?")){state.territoryClosures=state.territoryClosures.filter(r=>r.id!==x.id);save();renderClosures();notify("Cierre eliminado.")}});
+
 // Formato editable para cartelera
 const defaultCols=[{id:"fecha",title:"Fecha"},{id:"hora",title:"Hora(s)"},{id:"conductor",title:"Conductor(es)"},{id:"territorio",title:"Territorio(s)"},{id:"punto",title:"Lugar / punto de encuentro"}];
 function ensureFormat(){if(!state.format)state.format={columns:defaultCols.map(x=>({...x})),rows:[]};if(!state.format.columns?.length)state.format.columns=defaultCols.map(x=>({...x}));state.format.columns=state.format.columns.filter(c=>c.id!=="participantes");state.format.rows.forEach(r=>delete r.participantes);}
@@ -164,17 +178,18 @@ function download(name,content,type){const blob=new Blob([content],{type}),url=U
 function csvCell(v){return '"'+String(v??"").replace(/"/g,'""')+'"'}
 function exportCsv(name,headers,rows){const csv="\uFEFF"+[headers,...rows].map(r=>r.map(csvCell).join(";")).join("\r\n");download(name,csv,"text/csv;charset=utf-8")}
 $("exportActivities").onclick=()=>exportCsv("servicio_del_campo_actividades.csv",["Fecha","Hora","Conductor","Territorio(s)","Lugar de encuentro","Observaciones"],state.activities.sort(sortByDate).map(x=>[dateFmt(x.fecha),x.hora,x.conductor,x.territorio,x.punto,x.observaciones]));
-$("exportCatalogs").onclick=()=>{const rows=[];Object.entries(catalogs).forEach(([k,c])=>state[c.items].forEach(x=>rows.push([k,...c.values(x)])));exportCsv("servicio_del_campo_registros.csv",["Tipo","Dato 1","Dato 2","Dato 3","Dato 4"],rows)};
-$("backup").onclick=()=>download("copia_servicio_del_campo.json",JSON.stringify({app:"Servicio del Campo",version:2,exportado:new Date().toISOString(),...state},null,2),"application/json");
-$("restore").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const x=JSON.parse(await f.text());if(!Array.isArray(x.activities))throw Error("No se encontró la lista de actividades.");if(!confirm("La restauración reemplazará todos los registros actuales y el formato. ¿Deseas continuar?"))return;state.activities=x.activities;state.publicadores=Array.isArray(x.publicadores)?x.publicadores:[];state.lugares=Array.isArray(x.lugares)?x.lugares:[];state.territorios=Array.isArray(x.territorios)?x.territorios:[];state.format=x.format||null;save();resetActivity();Object.keys(catalogs).forEach(renderCatalog);renderActivities();refreshOptions();renderFormat();notify("Copia restaurada correctamente.")}catch(err){alert("No se pudo restaurar: "+err.message)}finally{e.target.value=""}};
+$("exportCatalogs").onclick=()=>{const rows=[];Object.entries(catalogs).forEach(([k,c])=>state[c.items].forEach(x=>rows.push([k,...c.values(x)])));state.territoryClosures.forEach(x=>rows.push(["cierre_territorio",x.codigo,x.conductor,x.fecha]));exportCsv("servicio_del_campo_registros.csv",["Tipo","Dato 1","Dato 2","Dato 3","Dato 4"],rows)};
+$("backup").onclick=()=>download("copia_servicio_del_campo.json",JSON.stringify({app:"Servicio del Campo",version:3,exportado:new Date().toISOString(),...state},null,2),"application/json");
+$("restore").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const x=JSON.parse(await f.text());if(!Array.isArray(x.activities))throw Error("No se encontró la lista de actividades.");if(!confirm("La restauración reemplazará todos los registros actuales y el formato. ¿Deseas continuar?"))return;state.activities=x.activities;state.publicadores=Array.isArray(x.publicadores)?x.publicadores:[];state.lugares=Array.isArray(x.lugares)?x.lugares:[];state.territorios=Array.isArray(x.territorios)?x.territorios:[];state.territoryClosures=Array.isArray(x.territoryClosures)?x.territoryClosures:[];state.format=x.format||null;save();resetActivity();resetClosure();Object.keys(catalogs).forEach(renderCatalog);renderActivities();refreshOptions();renderClosures();renderFormat();notify("Copia restaurada correctamente.")}catch(err){alert("No se pudo restaurar: "+err.message)}finally{e.target.value=""}};
 
 // Migración de la primera versión: conserva actividades previas.
 if(!Array.isArray(state.activities))state.activities=[];
 if(!Array.isArray(state.publicadores))state.publicadores=[];
 if(!Array.isArray(state.lugares))state.lugares=[];
 if(!Array.isArray(state.territorios))state.territorios=[];
+if(!Array.isArray(state.territoryClosures))state.territoryClosures=[];
 
 if(state.format&&!Array.isArray(state.format.rows))state.format=null;
-Object.keys(catalogs).forEach(renderCatalog);renderActivities();refreshOptions();ensureFormat();save();
+Object.keys(catalogs).forEach(renderCatalog);renderActivities();refreshOptions();renderClosures();ensureFormat();save();
 </script>
 </body></html>
