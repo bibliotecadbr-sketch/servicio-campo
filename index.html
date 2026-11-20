@@ -49,10 +49,11 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#fafafa}.empty{
 <main>
 <section id="view-actividades" class="view">
  <div class="panel no-print">
-  <div class="topline"><h2 id="activityTitle">Agregar actividad</h2><span class="muted">Completa los datos de la reunión</span></div>
+  <div class="topline"><h2 id="activityTitle">Agregar actividad</h2><span class="muted">Completa los datos de la asignación</span></div>
   <form id="activityForm"><input type="hidden" id="activityId">
    <div class="grid">
-    <div><label for="fecha">Fecha *</label><input id="fecha" type="date" required></div>
+    <div><label for="fecha">Fecha de asignación *</label><input id="fecha" type="date" required></div>
+    <div><label for="codigoActividad">Código *</label><input id="codigoActividad" placeholder="Selecciona o escribe el código" required list="codigoActividadOptions"><datalist id="codigoActividadOptions"></datalist></div>
     <div><label for="hora">Hora *</label><input id="hora" placeholder="Ej. 09:00 a. m." required list="horaOptions"><datalist id="horaOptions"></datalist></div>
     <div><label for="conductor">Conductor *</label><input id="conductor" placeholder="Selecciona o escribe un conductor" required list="conductorOptions"><datalist id="conductorOptions"></datalist></div>
     <div><label for="territorio">Territorio(s) *</label><input id="territorio" placeholder="Selecciona o escribe territorio(s)" required list="territorioOptions"><datalist id="territorioOptions"></datalist></div>
@@ -65,7 +66,7 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#fafafa}.empty{
  <div class="panel">
   <div class="topline"><div><h2>Programación del servicio del campo</h2><div class="muted" id="activityCount"></div></div><input class="search no-print" id="activitySearch" type="search" placeholder="Buscar en actividades…"></div>
   <div class="toolbar no-print" style="margin-bottom:12px"><label for="activityMonth" style="margin:0">Mes:</label><input id="activityMonth" type="month" style="max-width:180px"><button class="secondary small" id="activityAll">Mostrar todos</button><button class="secondary small" onclick="window.print()">Imprimir lista</button></div>
-  <div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Hora</th><th>Conductor</th><th>Territorio(s)</th><th>Lugar de encuentro</th><th class="no-print">Acciones</th></tr></thead><tbody id="activityRows"></tbody></table></div>
+  <div class="table-wrap"><table><thead><tr><th>Fecha de asignación</th><th>Código</th><th>Hora</th><th>Conductor</th><th>Territorio(s)</th><th>Lugar de encuentro</th><th class="no-print">Acciones</th></tr></thead><tbody id="activityRows"></tbody></table></div>
  </div>
 </section>
 
@@ -145,6 +146,7 @@ function sortByDate(a,b){return (a.fecha||"").localeCompare(b.fecha||"")||(a.hor
 function setOptions(id,arr,formatter=x=>x){$(id).innerHTML=[...new Set(arr.map(formatter).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es")).map(x=>`<option value="${esc(x)}"></option>`).join("")}
 function refreshOptions(){
  setOptions("territorioOptions",state.territorios,x=>`${x.codigo} - ${x.nombre}`);
+ setOptions("codigoActividadOptions",state.territorios,x=>x.codigo);
  setOptions("lugarOptions",state.lugares,x=>x.direccion?`${x.nombre} — ${x.direccion}`:x.nombre);
  setOptions("conductorOptions",state.publicadores.filter(x=>x.puedeConducir==="si"),x=>x.nombre);
  setOptions("closureTerritoryOptions",state.territorios,x=>x.codigo);
@@ -156,10 +158,10 @@ $("tabs").addEventListener("click",e=>{const b=e.target.closest("[data-view]");i
 
 // Actividades
 function resetActivity(){$("activityForm").reset();$("activityId").value="";$("activityTitle").textContent="Agregar actividad";$("activitySave").textContent="Guardar actividad";$("activityCancel").classList.add("hidden")}
-$("activityForm").addEventListener("submit",e=>{e.preventDefault();const d={fecha:$("fecha").value,hora:$("hora").value.trim(),conductor:$("conductor").value.trim(),territorio:$("territorio").value.trim(),punto:$("punto").value.trim(),observaciones:$("observaciones").value.trim()};if(Object.values(d).slice(0,5).some(x=>!x)){notify("Completa los campos obligatorios.");return}const id=$("activityId").value;if(id){const i=state.activities.findIndex(x=>x.id===id);if(i>=0)state.activities[i]={...state.activities[i],...d};notify("Actividad actualizada.")}else{state.activities.push({id:uid(),...d,creado:new Date().toISOString()});notify("Actividad guardada.")}save();resetActivity();renderActivities();refreshOptions()});
+$("activityForm").addEventListener("submit",e=>{e.preventDefault();const d={fecha:$("fecha").value,codigo:$("codigoActividad").value.trim(),hora:$("hora").value.trim(),conductor:$("conductor").value.trim(),territorio:$("territorio").value.trim(),punto:$("punto").value.trim(),observaciones:$("observaciones").value.trim()};if(!d.fecha||!d.codigo||!d.hora||!d.conductor||!d.territorio||!d.punto){notify("Completa todos los campos obligatorios.");return}const id=$("activityId").value;if(id){const i=state.activities.findIndex(x=>x.id===id);if(i>=0)state.activities[i]={...state.activities[i],...d};notify("Actividad actualizada.")}else{state.activities.push({id:uid(),...d,creado:new Date().toISOString()});notify("Actividad guardada.")}save();resetActivity();renderActivities();refreshOptions()});
 $("activityCancel").onclick=resetActivity;$("activityClear").onclick=()=>setTimeout(resetActivity,0);
-function renderActivities(){const q=$("activitySearch").value.toLocaleLowerCase("es"),m=$("activityMonth").value;const arr=[...state.activities].sort(sortByDate).filter(x=>(!m||(x.fecha||"").startsWith(m))&&(!q||[x.fecha,x.hora,x.conductor,x.territorio,x.punto,x.observaciones].join(" ").toLocaleLowerCase("es").includes(q)));$("activityCount").textContent=`${arr.length} actividades visibles · ${state.activities.length} en total`;$("activityRows").innerHTML=arr.length?arr.map(x=>`<tr><td>${esc(dateFmt(x.fecha))}</td><td>${esc(x.hora)}</td><td><b>${esc(x.conductor)}</b></td><td>${esc(x.territorio)}</td><td>${esc(x.punto)}</td><td class="no-print"><div class="actions"><button class="small secondary" data-act="edit" data-id="${esc(x.id)}">Editar</button><button class="small danger" data-act="del" data-id="${esc(x.id)}">Eliminar</button></div></td></tr>`).join(""):`<tr><td class="empty" colspan="6">No hay actividades registradas.</td></tr>`}
-$("activityRows").onclick=e=>{const b=e.target.closest("[data-act]");if(!b)return;const x=state.activities.find(r=>r.id===b.dataset.id);if(!x)return;if(b.dataset.act==="edit"){$("activityId").value=x.id;["fecha","hora","conductor","territorio","punto","observaciones"].forEach(k=>$(k).value=x[k]||"");$("activityTitle").textContent="Editar actividad";$("activitySave").textContent="Guardar cambios";$("activityCancel").classList.remove("hidden");window.scrollTo({top:0,behavior:"smooth"})}else if(confirm("¿Eliminar esta actividad?")){state.activities=state.activities.filter(r=>r.id!==x.id);save();renderActivities();notify("Actividad eliminada.")}};
+function renderActivities(){const q=$("activitySearch").value.toLocaleLowerCase("es"),m=$("activityMonth").value;const arr=[...state.activities].sort(sortByDate).filter(x=>(!m||(x.fecha||"").startsWith(m))&&(!q||[x.fecha,x.codigo,x.hora,x.conductor,x.territorio,x.punto,x.observaciones].join(" ").toLocaleLowerCase("es").includes(q)));$("activityCount").textContent=`${arr.length} actividades visibles · ${state.activities.length} en total`;$("activityRows").innerHTML=arr.length?arr.map(x=>`<tr><td>${esc(dateFmt(x.fecha))}</td><td><b>${esc(x.codigo||"—")}</b></td><td>${esc(x.hora)}</td><td><b>${esc(x.conductor)}</b></td><td>${esc(x.territorio)}</td><td>${esc(x.punto)}</td><td class="no-print"><div class="actions"><button class="small secondary" data-act="edit" data-id="${esc(x.id)}">Editar</button><button class="small danger" data-act="del" data-id="${esc(x.id)}">Eliminar</button></div></td></tr>`).join(""):`<tr><td class="empty" colspan="7">No hay actividades registradas.</td></tr>`}
+$("activityRows").onclick=e=>{const b=e.target.closest("[data-act]");if(!b)return;const x=state.activities.find(r=>r.id===b.dataset.id);if(!x)return;if(b.dataset.act==="edit"){$("activityId").value=x.id;$("fecha").value=x.fecha||"";$("codigoActividad").value=x.codigo||"";["hora","conductor","territorio","punto","observaciones"].forEach(k=>$(k).value=x[k]||"");$("activityTitle").textContent="Editar actividad";$("activitySave").textContent="Guardar cambios";$("activityCancel").classList.remove("hidden");window.scrollTo({top:0,behavior:"smooth"})}else if(confirm("¿Eliminar esta actividad?")){state.activities=state.activities.filter(r=>r.id!==x.id);save();renderActivities();notify("Actividad eliminada.")}};
 $("activitySearch").oninput=renderActivities;$("activityMonth").onchange=renderActivities;$("activityAll").onclick=()=>{$("activityMonth").value="";$("activitySearch").value="";renderActivities()};
 
 // Catálogos reutilizables
@@ -210,7 +212,11 @@ function getSummaryRows(){
   if(key&&!byCode.has(key))byCode.set(key,{codigo:String(c.codigo||"").trim(),nombre:""});
  });
  return [...byCode.values()].map(t=>{
-  const matchingActivities=state.activities.filter(a=>(String(a.fecha||"").slice(0,4)===year)&&territoryAppears(a.territorio,t));
+  const matchingActivities=state.activities.filter(a=>{
+  if(String(a.fecha||"").slice(0,4)!==year)return false;
+  const activityCode=normalizeTerritoryText(a.codigo);
+  return activityCode?activityCode===normalizeTerritoryText(t.codigo):territoryAppears(a.territorio,t);
+ });
   const assignments=[...new Set(matchingActivities.map(a=>a.fecha).filter(Boolean))].sort();
   const closureRecords=state.territoryClosures.filter(c=>normalizeTerritoryText(c.codigo)===normalizeTerritoryText(t.codigo)&&String(c.fecha||"").slice(0,4)===year);
   const closures=[...new Set(closureRecords.map(c=>c.fecha).filter(Boolean))].sort();
