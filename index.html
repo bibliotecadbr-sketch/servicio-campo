@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#172554">
-<title>Servicio del Campo | Gestión local v6</title>
+<title>Servicio del Campo | Gestión local v7</title>
 <style>
 :root{--navy:#172554;--blue:#4f46e5;--blue2:#4338ca;--bg:#f1f5f9;--ink:#1e293b;--muted:#64748b;--line:#e2e8f0;--green:#047857;--red:#be123c}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -32,7 +32,7 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#fafafa}.empty{
 .column-tools{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.format-table input{min-width:110px;border:0;background:transparent;padding:4px}.format-table td{min-width:120px}
 @media(max-width:800px){.form-pair{grid-template-columns:1fr}}
 @media(max-width:650px){.grid{grid-template-columns:1fr}.full{grid-column:auto}.panel{padding:14px}h1{font-size:19px}.search{max-width:none;width:100%}}
-@media print{@page{size:A4 portrait;margin:10mm}body{background:white;color:black;font-size:11px}header{background:white!important;color:black!important;box-shadow:none;padding:0 0 10px}header p{color:#333}header h1{font-size:17px}nav,.no-print,footer,#toast{display:none!important}main{max-width:none;margin:0;padding:0}.panel{border:0;box-shadow:none;padding:0;margin:0}.table-wrap{overflow:visible;border:0}table{min-width:0!important;width:100%!important;table-layout:fixed}th,td{border:1px solid #555!important;padding:5px 4px;color:black!important;font-size:9px!important;overflow-wrap:anywhere;word-break:break-word}th{background:#e5e7eb!important} .format-table td{min-width:0!important;white-space:pre-wrap}.format-table input{color:black!important;width:100%;min-width:0!important;font-size:9px!important;padding:1px!important;white-space:pre-wrap}}
+@media print{@page{size:A4 portrait;margin:10mm}body{background:white;color:black;font-size:11px}header{background:white!important;color:black!important;box-shadow:none;padding:0 0 10px}header p{color:#333}header h1{font-size:17px}nav,.no-print,footer,#toast{display:none!important}main{max-width:none;margin:0;padding:0}.panel{border:0;box-shadow:none;padding:0;margin:0}.table-wrap{overflow:visible;border:0}table{min-width:0!important;width:100%!important;table-layout:fixed}th,td{border:1px solid #555!important;padding:5px 4px;color:black!important;font-size:9px!important;overflow-wrap:anywhere;word-break:break-word}th{background:#e5e7eb!important} .format-table td{min-width:0!important;white-space:pre-wrap}.format-table input{color:black!important;width:100%;min-width:0!important;font-size:9px!important;padding:1px!important;white-space:pre-wrap}#summaryRows td{white-space:normal}#summaryRows td:nth-child(3),#summaryRows td:nth-child(4),#summaryRows td:nth-child(5){line-height:1.6}}
 </style>
 </head>
 <body>
@@ -42,6 +42,7 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#fafafa}.empty{
 <button class="tab" data-view="publicadores">Publicadores</button>
 <button class="tab" data-view="lugares">Lugares de encuentro</button>
 <button class="tab" data-view="territorios">Territorios</button>
+<button class="tab" data-view="resumen">Resumen anual</button>
 <button class="tab" data-view="formato">Formato para cartelera</button>
 <button class="tab" data-view="copias">Exportar y copias</button>
 </div></nav>
@@ -96,6 +97,24 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#fafafa}.empty{
  <div class="panel"><div class="topline"><h2>Territorios registrados</h2><input class="search" id="terrSearch" placeholder="Buscar territorio…"></div><div class="table-wrap"><table><thead><tr><th>Código</th><th>Nombre / zona</th><th>Descripción</th><th>Acciones</th></tr></thead><tbody id="terrRows"></tbody></table></div></div>
  <div class="panel"><div class="topline"><div><h2>Territorios cerrados</h2><div class="muted" id="closureCount"></div></div><input class="search" id="closureSearch" placeholder="Buscar cierre…"></div><div class="table-wrap"><table><thead><tr><th>Número o código</th><th>Conductor</th><th>Fecha de cierre</th><th>Acciones</th></tr></thead><tbody id="closureRows"></tbody></table></div></div>
 </section>
+<section id="view-resumen" class="view hidden">
+ <div class="panel no-print">
+  <div class="topline"><div><h2>Resumen anual de territorios</h2><div class="muted">Consulta las fechas en que se asignó cada territorio y sus fechas de cierre.</div></div></div>
+  <div class="toolbar">
+   <label for="summaryYear" style="margin:0">Año:</label>
+   <input id="summaryYear" type="number" min="2000" max="2100" step="1" style="max-width:130px">
+   <button id="summaryRefresh">Actualizar resumen</button>
+   <button id="summaryExport" class="secondary">Exportar resumen CSV</button>
+   <button class="green" onclick="window.print()">Imprimir resumen</button>
+  </div>
+ </div>
+ <div class="panel">
+  <div class="topline"><div><h2 id="summaryHeading">Resumen anual</h2><div class="muted" id="summaryInfo"></div></div><input class="search no-print" id="summarySearch" placeholder="Buscar código o conductor…"></div>
+  <div class="table-wrap"><table><thead><tr><th>Año</th><th>Código *</th><th>Conductores</th><th>Fechas de asignación</th><th>Fecha de cierre</th></tr></thead><tbody id="summaryRows"></tbody></table></div>
+  <p class="muted no-print" style="margin-top:10px">Las fechas de asignación se obtienen de las actividades registradas cuyo campo Territorio(s) contiene el código o nombre del territorio. Las fechas de cierre se toman del módulo Cierre de territorio. Se muestran las fechas del año seleccionado.</p>
+ </div>
+</section>
+
 <section id="view-formato" class="view hidden">
  <div class="panel no-print"><div class="topline"><div><h2>Formato para cartelera</h2><div class="muted">Genera una tabla desde las actividades y personalízala antes de imprimir.</div></div></div>
  <div class="toolbar"><label for="formatMonth" style="margin:0">Mes de programación:</label><input id="formatMonth" type="month" style="max-width:180px"><button id="generateFormat">Actualizar desde actividades</button><button class="secondary" id="addFormatRow">Agregar fila</button><button class="secondary" id="addFormatCol">Agregar columna</button><button class="green" onclick="window.print()">Imprimir cartelera</button></div>
@@ -132,7 +151,7 @@ function refreshOptions(){
  setOptions("closureConductorOptions",state.publicadores.filter(x=>x.puedeConducir==="si"),x=>x.nombre);
  setOptions("horaOptions",state.activities,x=>x.hora);
 }
-function switchView(v){document.querySelectorAll(".view").forEach(x=>x.classList.add("hidden"));$("view-"+v).classList.remove("hidden");document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.view===v));if(v==="formato")renderFormat();if(v==="actividades")renderActivities()}
+function switchView(v){document.querySelectorAll(".view").forEach(x=>x.classList.add("hidden"));$("view-"+v).classList.remove("hidden");document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.view===v));if(v==="formato")renderFormat();if(v==="actividades")renderActivities();if(v==="resumen")renderSummary()}
 $("tabs").addEventListener("click",e=>{const b=e.target.closest("[data-view]");if(b)switchView(b.dataset.view)});
 
 // Actividades
@@ -163,6 +182,41 @@ function resetClosure(){$("closureForm").reset();$("closureId").value="";$("clos
 function renderClosures(){const q=$("closureSearch").value.toLocaleLowerCase("es"),arr=[...state.territoryClosures].sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));const filtered=arr.filter(x=>[x.codigo,x.conductor,x.fecha].join(" ").toLocaleLowerCase("es").includes(q));$("closureCount").textContent=`${filtered.length} cierres registrados`;$("closureRows").innerHTML=filtered.length?filtered.map(x=>`<tr><td><b>${esc(x.codigo)}</b></td><td>${esc(x.conductor||"—")}</td><td>${esc(dateFmt(x.fecha))}</td><td><div class="actions"><button class="small secondary" data-closure="edit" data-id="${esc(x.id)}">Editar</button><button class="small danger" data-closure="del" data-id="${esc(x.id)}">Eliminar</button></div></td></tr>`).join(""):`<tr><td colspan="4" class="empty">No hay cierres registrados.</td></tr>`}
 $("closureForm").addEventListener("submit",e=>{e.preventDefault();const data={codigo:$("closureCode").value.trim(),conductor:$("closureConductor").value.trim(),fecha:$("closureDate").value};if(!data.codigo){notify("Ingresa el número o código del territorio.");return}const id=$("closureId").value;if(id){const i=state.territoryClosures.findIndex(x=>x.id===id);if(i>=0)state.territoryClosures[i]={...state.territoryClosures[i],...data};notify("Cierre actualizado.")}else{state.territoryClosures.push({id:uid(),...data,creado:new Date().toISOString()});notify("Cierre de territorio registrado.")}save();resetClosure();renderClosures()});
 $("closureCancel").onclick=resetClosure;$("closureClear").onclick=()=>setTimeout(resetClosure,0);$("closureSearch").oninput=renderClosures;$("closureRows").addEventListener("click",e=>{const b=e.target.closest("[data-closure]");if(!b)return;const x=state.territoryClosures.find(r=>r.id===b.dataset.id);if(!x)return;if(b.dataset.closure==="edit"){$("closureId").value=x.id;$("closureCode").value=x.codigo||"";$("closureConductor").value=x.conductor||"";$("closureDate").value=x.fecha||"";$("closureTitle").textContent="Editar cierre de territorio";$ ("closureSave").textContent="Guardar cambios";$ ("closureCancel").classList.remove("hidden");window.scrollTo({top:0,behavior:"smooth"})}else if(confirm("¿Eliminar este registro de cierre?")){state.territoryClosures=state.territoryClosures.filter(r=>r.id!==x.id);save();renderClosures();notify("Cierre eliminado.")}});
+
+// Resumen anual: fechas de asignación derivadas de actividades y fechas de cierre registradas
+function summaryYear(){const y=parseInt($("summaryYear").value,10);return Number.isFinite(y)?String(y):String(new Date().getFullYear())}
+function territoryAppears(activityText,territory){
+ const text=String(activityText||"").toLocaleLowerCase("es");
+ const code=String(territory.codigo||"").trim().toLocaleLowerCase("es");
+ const name=String(territory.nombre||"").trim().toLocaleLowerCase("es");
+ const has=(term)=>{if(!term)return false;const escaped=term.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");return new RegExp("(^|[^a-z0-9])"+escaped+"(?=$|[^a-z0-9])","i").test(text)};
+ return has(code)||has(name);
+}
+function getSummaryRows(){
+ const year=summaryYear();
+ return state.territorios.map(t=>{
+  const matchingActivities=state.activities.filter(a=>(a.fecha||"").startsWith(year+"-")&&territoryAppears(a.territorio,t));
+  const assignments=[...new Set(matchingActivities.map(a=>a.fecha).filter(Boolean))].sort();
+  const conductors=[...new Set(matchingActivities.map(a=>String(a.conductor||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es"));
+  const closures=state.territoryClosures.filter(c=>String(c.codigo||"").trim().toLocaleLowerCase("es")===String(t.codigo||"").trim().toLocaleLowerCase("es")&&(c.fecha||"").startsWith(year+"-")).map(c=>c.fecha).filter(Boolean).sort();
+  return {anio:year,codigo:t.codigo,conductores,asignaciones:assignments,cierres:closures};
+ }).sort((a,b)=>String(a.codigo).localeCompare(String(b.codigo),"es",{numeric:true}));
+}
+function renderSummary(){
+ const year=summaryYear(),q=$("summarySearch").value.toLocaleLowerCase("es");
+ const all=getSummaryRows(),rows=all.filter(r=>[r.anio,r.codigo,r.conductores.join(" "),r.asignaciones.map(dateFmt).join(" "),r.cierres.map(dateFmt).join(" ")].join(" ").toLocaleLowerCase("es").includes(q));
+ $("summaryHeading").textContent="Resumen de territorios — "+year;
+ $("summaryInfo").textContent=`${rows.length} territorios visibles · ${all.reduce((n,r)=>n+r.asignaciones.length,0)} fechas de asignación · ${all.reduce((n,r)=>n+r.cierres.length,0)} cierres en el año`;
+ $("summaryRows").innerHTML=rows.length?rows.map(r=>`<tr><td>${esc(r.anio)}</td><td><b>${esc(r.codigo)}</b></td><td>${r.conductores.length?r.conductores.map(esc).join("<br>"):"—"}</td><td>${r.asignaciones.length?r.asignaciones.map(dateFmt).map(esc).join("<br>"):"—"}</td><td>${r.cierres.length?r.cierres.map(dateFmt).map(esc).join("<br>"):"—"}</td></tr>`).join(""):`<tr><td colspan="5" class="empty">No hay territorios registrados que coincidan con la búsqueda.</td></tr>`;
+}
+$("summaryYear").value=String(new Date().getFullYear());
+$("summaryRefresh").onclick=renderSummary;
+$("summaryYear").addEventListener("change",renderSummary);
+$("summarySearch").addEventListener("input",renderSummary);
+$("summaryExport").onclick=()=>{
+ const rows=getSummaryRows().map(r=>[r.anio,r.codigo,r.conductores.join(" | "),r.asignaciones.map(dateFmt).join(" | "),r.cierres.map(dateFmt).join(" | ")]);
+ exportCsv(`resumen_territorios_${summaryYear()}.csv`,["Año","Código","Conductores","Fechas de asignación","Fecha de cierre"],rows);
+};
 
 // Formato editable para cartelera
 const defaultCols=[{id:"fecha",title:"Fecha"},{id:"hora",title:"Hora(s)"},{id:"conductor",title:"Conductor(es)"},{id:"territorio",title:"Territorio(s)"},{id:"punto",title:"Lugar / punto de encuentro"}];
