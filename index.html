@@ -100,7 +100,7 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#fafafa}.empty{
 </section>
 <section id="view-resumen" class="view hidden">
  <div class="panel no-print">
-  <div class="topline"><div><h2>Resumen anual de territorios</h2><div class="muted">Consulta las fechas en que se asignó cada territorio y sus fechas de cierre.</div></div></div>
+  <div class="topline"><div><h2>Resumen anual de territorios</h2><div class="muted">Consulta la programación guardada en “Programación del servicio del campo” y los registros de “Territorios cerrados”.</div></div></div>
   <div class="toolbar">
    <label for="summaryYear" style="margin:0">Año:</label>
    <input id="summaryYear" type="number" min="2000" max="2100" step="1" style="max-width:130px">
@@ -112,7 +112,7 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#fafafa}.empty{
  <div class="panel">
   <div class="topline"><div><h2 id="summaryHeading">Resumen anual</h2><div class="muted" id="summaryInfo"></div></div><input class="search no-print" id="summarySearch" placeholder="Buscar código o conductor…"></div>
   <div class="table-wrap"><table><thead><tr><th>Año</th><th>Código *</th><th>Conductores</th><th>Fechas de asignación</th><th>Fecha de cierre</th></tr></thead><tbody id="summaryRows"></tbody></table></div>
-  <p class="muted no-print" style="margin-top:10px">Las fechas de asignación se obtienen de las actividades registradas cuyo campo Territorio(s) contiene el código o nombre del territorio. Las fechas de cierre se toman del módulo Cierre de territorio. Se muestran las fechas del año seleccionado.</p>
+  <p class="muted no-print" style="margin-top:10px">Las fechas de asignación y los conductores se leen de las filas guardadas en “Programación del servicio del campo”. Las fechas de cierre y los conductores de cierre se leen de “Territorios cerrados”. Ambos módulos se relacionan mediante el código del territorio. En formatos antiguos sin código guardado, se intenta reconocerlo por el texto de “Territorio(s)”.</p>
  </div>
 </section>
 
@@ -199,41 +199,56 @@ function territoryAppears(activityText,territory){
   return new RegExp("(^|[^a-z0-9])"+escaped+"(?=$|[^a-z0-9])","i").test(text);
  });
 }
+function summaryDateYear(value){
+ const s=String(value||"").trim();
+ let m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+ if(m)return m[1];
+ m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+ if(m)return m[3];
+ m=s.match(/\b(20\d{2})\b/);
+ return m?m[1]:"";
+}
+function splitSummaryValues(value){
+ return String(value||"").split(/[\n;|,]+/).map(x=>x.trim()).filter(Boolean);
+}
+function summaryCodeMatches(value,code){
+ const target=normalizeTerritoryText(code);
+ return splitSummaryValues(value).some(x=>normalizeTerritoryText(x)===target);
+}
 function getSummaryRows(){
  const year=summaryYear();
- // Construir el resumen desde las tres fuentes: catálogo, actividades y cierres.
- // Así no se pierde un código escrito manualmente en Agregar actividad.
+ // The summary's assignment source is the saved bulletin/programming table, not raw activity records.
+ const programRows=Array.isArray(state.format?.rows)?state.format.rows:[];
+ const closureRows=Array.isArray(state.territoryClosures)?state.territoryClosures:[];
  const byCode=new Map();
  const addCode=(code,nombre="")=>{
-  const display=String(code||"").trim();
-  const key=normalizeTerritoryText(display);
+  const display=String(code||"").trim(),key=normalizeTerritoryText(display);
   if(!key)return;
   if(!byCode.has(key))byCode.set(key,{codigo:display,nombre:nombre||""});
   else if(nombre&&!byCode.get(key).nombre)byCode.get(key).nombre=nombre;
  };
  state.territorios.forEach(t=>addCode(t.codigo,t.nombre));
- state.activities.filter(a=>String(a.fecha||"").slice(0,4)===year).forEach(a=>{
-  if(a.codigo)addCode(a.codigo);
-  else {
-   // Compatibility with activities created before the required Código field existed.
-   state.territorios.forEach(t=>{if(territoryAppears(a.territorio,t))addCode(t.codigo,t.nombre)});
-  }
+ // Include explicit codes embedded in saved programming rows (newly generated formats).
+ programRows.forEach(r=>{
+  if(summaryDateYear(r.fecha)!==year)return;
+  splitSummaryValues(r.codigo).forEach(code=>addCode(code));
  });
- state.territoryClosures.filter(c=>String(c.fecha||"").slice(0,4)===year).forEach(c=>addCode(c.codigo));
+ // Include any territory code recorded in the selected year's closure register.
+ closureRows.forEach(c=>{if(summaryDateYear(c.fecha)===year)addCode(c.codigo)});
+ const programForTerritory=(t)=>programRows.filter(r=>{
+  if(summaryDateYear(r.fecha)!==year)return false;
+  // Prefer the explicit code carried by the programming row.
+  if(String(r.codigo||"").trim())return summaryCodeMatches(r.codigo,t.codigo);
+  // Compatibility with earlier programming tables that only had the Territorio(s) text column.
+  return territoryAppears(r.territorio,t);
+ });
  return [...byCode.values()].map(t=>{
-  const matchingActivities=state.activities.filter(a=>{
-   if(String(a.fecha||"").slice(0,4)!==year)return false;
-   const activityCode=normalizeTerritoryText(a.codigo);
-   if(activityCode)return activityCode===normalizeTerritoryText(t.codigo);
-   return territoryAppears(a.territorio,t);
-  });
-  const assignments=[...new Set(matchingActivities.map(a=>a.fecha).filter(Boolean))].sort();
-  const closureRecords=state.territoryClosures.filter(c=>
-   normalizeTerritoryText(c.codigo)===normalizeTerritoryText(t.codigo)&&String(c.fecha||"").slice(0,4)===year
-  );
+  const assignmentsRows=programForTerritory(t);
+  const assignments=[...new Set(assignmentsRows.flatMap(r=>splitSummaryValues(r.fecha)).filter(d=>summaryDateYear(d)===year))].sort();
+  const closureRecords=closureRows.filter(c=>normalizeTerritoryText(c.codigo)===normalizeTerritoryText(t.codigo)&&summaryDateYear(c.fecha)===year);
   const closures=[...new Set(closureRecords.map(c=>c.fecha).filter(Boolean))].sort();
   const conductors=[...new Set([
-   ...matchingActivities.map(a=>String(a.conductor||"").trim()),
+   ...assignmentsRows.flatMap(r=>splitSummaryValues(r.conductor)),
    ...closureRecords.map(c=>String(c.conductor||"").trim())
   ].filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es"));
   return {anio:year,codigo:t.codigo,nombre:t.nombre,conductores,asignaciones:assignments,cierres:closures};
@@ -250,7 +265,7 @@ $("summaryYear").value=String(new Date().getFullYear());
 $("summaryRefresh").onclick=()=>{
  try{
   const readLatest=(key,fallback)=>{const raw=localStorage.getItem(key);if(!raw)return fallback;const parsed=JSON.parse(raw);return Array.isArray(parsed)?parsed:fallback};
-  state.activities=readLatest(KEY,state.activities);
+  state.format=(()=>{const raw=localStorage.getItem(FORMAT_KEY);if(!raw)return state.format;try{return JSON.parse(raw)}catch(e){return state.format}})();
   state.territorios=readLatest(KEY+"_territorios",state.territorios);
   state.territoryClosures=readLatest(KEY+"_cierres_territorio",state.territoryClosures);
   renderSummary();
@@ -269,9 +284,9 @@ const defaultCols=[{id:"fecha",title:"Fecha"},{id:"hora",title:"Hora(s)"},{id:"c
 function ensureFormat(){if(!state.format)state.format={columns:defaultCols.map(x=>({...x})),rows:[]};if(!state.format.columns?.length)state.format.columns=defaultCols.map(x=>({...x}));state.format.columns=state.format.columns.filter(c=>c.id!=="participantes");state.format.rows.forEach(r=>delete r.participantes);}
 function renderFormat(){ensureFormat();$("formatHeading").textContent=$("formatMonth").value?`Servicio del Campo — ${$("formatMonth").value}`:"Programación del servicio del campo";$("formatInfo").textContent=`${state.format.rows.length} filas`;$("formatHead").innerHTML=`<tr>${state.format.columns.map((c,i)=>`<th><div>${esc(c.title)} <span class="no-print"><button class="small secondary" data-col-edit="${i}">Renombrar</button> <button class="small danger" data-col-del="${i}">Quitar</button></span></div></th>`).join("")}<th class="no-print">Acciones</th></tr>`;$("formatBody").innerHTML=state.format.rows.length?state.format.rows.map((r,ri)=>`<tr>${state.format.columns.map(c=>`<td><input class="format-cell" data-row="${ri}" data-col="${esc(c.id)}" aria-label="${esc(c.title)}" value="${esc(r[c.id]||"")}"></td>`).join("")}<td class="no-print"><button class="small danger" data-row-del="${ri}">Eliminar</button></td></tr>`).join(""):`<tr><td class="empty" colspan="${state.format.columns.length+1}">No hay filas. Selecciona un mes y pulsa “Actualizar desde actividades”.</td></tr>`}
 $("formatHead").onclick=e=>{const edit=e.target.closest("[data-col-edit]"),del=e.target.closest("[data-col-del]");if(edit){const c=state.format.columns[+edit.dataset.col],v=prompt("Nuevo título de la columna:",c.title);if(v&&v.trim()){c.title=v.trim();save();renderFormat()}}if(del){const i=+del.dataset.col;if(state.format.columns.length<=1){notify("Debe quedar al menos una columna.");return}if(confirm("¿Quitar esta columna del formato?")){const c=state.format.columns.splice(i,1)[0];state.format.rows.forEach(r=>delete r[c.id]);save();renderFormat()}}};
-$("formatBody").addEventListener("input",e=>{const x=e.target.closest(".format-cell");if(!x)return;const r=state.format.rows[+x.dataset.row];r[x.dataset.col]=x.value;save()});
+$("formatBody").addEventListener("input",e=>{const x=e.target.closest(".format-cell");if(!x)return;const r=state.format.rows[+x.dataset.row];r[x.dataset.col]=x.value;save();if(!$("view-resumen").classList.contains("hidden"))renderSummary()});
 $("formatBody").onclick=e=>{const b=e.target.closest("[data-row-del]");if(b&&confirm("¿Eliminar esta fila del formato?")){state.format.rows.splice(+b.dataset.row,1);save();renderFormat()}};
-$("generateFormat").onclick=()=>{ensureFormat();const m=$("formatMonth").value;const arr=state.activities.filter(x=>!m||(x.fecha||"").startsWith(m)).sort(sortByDate);const groups=new Map();arr.forEach(x=>{const key=[x.fecha,x.punto].join("|");if(!groups.has(key))groups.set(key,{fecha:x.fecha,hora:[],conductor:[],territorio:[],punto:x.punto});const g=groups.get(key);[["hora","hora"],["conductor","conductor"],["territorio","territorio"]].forEach(([src,dst])=>{const v=(x[src]||"").trim();if(v&&!g[dst].includes(v))g[dst].push(v)})});state.format.rows=[...groups.values()].map(g=>({fecha:dateFmt(g.fecha),hora:g.hora.join("\\n"),conductor:g.conductor.join("\\n"),territorio:g.territorio.join("\\n"),punto:g.punto}));state.format.columns=state.format.columns||defaultCols.map(x=>({...x}));save();renderFormat();notify("Formato actualizado desde las actividades.")};
+$("generateFormat").onclick=()=>{ensureFormat();const m=$("formatMonth").value;const arr=state.activities.filter(x=>!m||(x.fecha||"").startsWith(m)).sort(sortByDate);const groups=new Map();arr.forEach(x=>{const key=[x.fecha,x.punto].join("|");if(!groups.has(key))groups.set(key,{fecha:x.fecha,hora:[],conductor:[],territorio:[],codigo:[],punto:x.punto});const g=groups.get(key);[["hora","hora"],["conductor","conductor"],["territorio","territorio"]].forEach(([src,dst])=>{const v=(x[src]||"").trim();if(v&&!g[dst].includes(v))g[dst].push(v)});const code=String(x.codigo||"").trim();if(code&&!g.codigo.includes(code))g.codigo.push(code)});state.format.rows=[...groups.values()].map(g=>({fecha:dateFmt(g.fecha),hora:g.hora.join("\\n"),conductor:g.conductor.join("\\n"),territorio:g.territorio.join("\\n"),codigo:g.codigo.join("\\n"),punto:g.punto}));state.format.columns=state.format.columns||defaultCols.map(x=>({...x}));save();renderFormat();if(!$("view-resumen").classList.contains("hidden"))renderSummary();notify("Programación del servicio del campo actualizada desde las actividades.")};
 $("addFormatRow").onclick=()=>{ensureFormat();const r={};state.format.columns.forEach(c=>r[c.id]="");state.format.rows.push(r);save();renderFormat()};
 $("addFormatCol").onclick=()=>{ensureFormat();const title=prompt("Nombre de la nueva columna:");if(!title||!title.trim())return;let id="extra_"+uid().replace(/-/g,"").slice(0,8);state.format.columns.push({id,title:title.trim()});state.format.rows.forEach(r=>r[id]="");save();renderFormat()};
 $("formatMonth").addEventListener("change",()=>renderFormat());
