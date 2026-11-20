@@ -471,8 +471,14 @@ $("backup").onclick=()=>download("copia_servicio_del_campo.json",JSON.stringify(
 $("restore").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const x=JSON.parse(await f.text());if(!Array.isArray(x.activities))throw Error("No se encontró la lista de actividades.");if(!confirm("La restauración reemplazará todos los registros actuales y el formato. ¿Deseas continuar?"))return;state.activities=x.activities;state.publicadores=Array.isArray(x.publicadores)?x.publicadores:[];state.lugares=Array.isArray(x.lugares)?x.lugares:[];state.territorios=Array.isArray(x.territorios)?x.territorios:[];state.territoryClosures=Array.isArray(x.territoryClosures)?x.territoryClosures:[];state.territoryAssignmentRegister=Array.isArray(x.territoryAssignmentRegister)?x.territoryAssignmentRegister:[];state.format=x.format||null;save();resetActivity();resetClosure();Object.keys(catalogs).forEach(renderCatalog);renderActivities();refreshOptions();renderClosures();renderFormat();notify("Copia restaurada correctamente.")}catch(err){alert("No se pudo restaurar: "+err.message)}finally{e.target.value=""}};
 
 
-// Contraseña local: PBKDF2-SHA-256 con sal aleatoria.
-const PASSWORD_KEY="servicioDelCampo_password_v1";let passwordMode="login";
+// Contraseña de apertura predeterminada. El administrador puede cambiarla desde el sistema.
+const PASSWORD_KEY="servicioDelCampo_password_v1";
+const PASSWORD_POLICY_KEY="servicioDelCampo_password_policy_v24";
+const DEFAULT_PASSWORD="Campo2026!";
+if(localStorage.getItem(PASSWORD_POLICY_KEY)!=="24"){
+ localStorage.removeItem(PASSWORD_KEY);
+ localStorage.setItem(PASSWORD_POLICY_KEY,"24");
+}
 function b64(bytes){let s="";bytes.forEach(b=>s+=String.fromCharCode(b));return btoa(s)}
 function unb64(s){return Uint8Array.from(atob(s),c=>c.charCodeAt(0))}
 async function digestPassword(password,salt){
@@ -485,15 +491,15 @@ async function setPassword(password){
  localStorage.setItem(PASSWORD_KEY,JSON.stringify({salt:b64(salt),hash:b64(hash),iterations:180000,algorithm:"PBKDF2-SHA-256"}));
 }
 async function checkPassword(password){
- const data=JSON.parse(localStorage.getItem(PASSWORD_KEY)||"null");if(!data)return false;
- const actual=await digestPassword(password,unb64(data.salt)),expected=unb64(data.hash);
+ const saved=JSON.parse(localStorage.getItem(PASSWORD_KEY)||"null");
+ if(!saved)return password===DEFAULT_PASSWORD;
+ const actual=await digestPassword(password,unb64(saved.salt)),expected=unb64(saved.hash);
  return actual.length===expected.length&&actual.every((v,i)=>v===expected[i]);
 }
 function unlockApp(){$("passwordGate").classList.add("hidden");$("changePasswordBtn").classList.remove("hidden");$("lockProgramBtn").classList.remove("hidden")}
 function lockProgram(){
- passwordMode="login";
  $("passwordGateTitle").textContent="Sistema bloqueado";
- $("passwordGateMessage").textContent="Para volver a utilizar Servicio del Campo, introduce la contraseña.";
+ $("passwordGateMessage").textContent="Introduce la contraseña autorizada para volver a utilizar Servicio del Campo.";
  $("passwordGateLabel").textContent="Contraseña";
  $("passwordGateInput").value="";
  $("passwordGateError").textContent="";
@@ -503,21 +509,16 @@ function lockProgram(){
  $("passwordGateInput").focus();
 }
 $("lockProgramBtn").addEventListener("click",lockProgram);
-function configureGate(){
- passwordMode=localStorage.getItem(PASSWORD_KEY)?"login":"setup";
- $("passwordGateTitle").textContent=passwordMode==="setup"?"Crear contraseña de apertura":"Acceso al programa";
- $("passwordGateMessage").textContent=passwordMode==="setup"?"Crea una contraseña para proteger la apertura del programa.":"Introduce tu contraseña para abrir Servicio del Campo.";
- $("passwordGateLabel").textContent=passwordMode==="setup"?"Nueva contraseña":"Contraseña";
- $("passwordConfirmWrap").classList.toggle("hidden",passwordMode!=="setup");
- $("passwordGateSubmit").textContent=passwordMode==="setup"?"Crear contraseña y abrir":"Entrar";
-}
-configureGate();
+$("passwordGateTitle").textContent="Acceso al programa";
+$("passwordGateMessage").textContent="Introduce la contraseña suministrada por el administrador.";
+$("passwordGateLabel").textContent="Contraseña";
+$("passwordConfirmWrap").classList.add("hidden");
+$("passwordGateSubmit").textContent="Entrar";
 $("passwordGateForm").addEventListener("submit",async e=>{
- e.preventDefault();const p=$("passwordGateInput").value;
+ e.preventDefault();
  try{
-  if(passwordMode==="setup"){if(p.length<4)throw Error("Usa al menos 4 caracteres.");if(p!==$("passwordConfirmInput").value)throw Error("Las contraseñas no coinciden.");await setPassword(p);unlockApp()}
-  else{if(!await checkPassword(p))throw Error("Contraseña incorrecta.");unlockApp()}
-  $("passwordGateError").textContent="";
+  if(!await checkPassword($("passwordGateInput").value))throw Error("Contraseña incorrecta. Solicita la clave al administrador.");
+  $("passwordGateError").textContent="";unlockApp();
  }catch(err){$("passwordGateError").textContent=err.message||"No se pudo validar la contraseña."}
 });
 $("changePasswordBtn").addEventListener("click",()=>{$("changePasswordError").textContent="";["oldPasswordInput","newPasswordInput","newPasswordConfirmInput"].forEach(id=>$(id).value="");$("changePasswordModal").classList.remove("hidden")});
@@ -525,9 +526,9 @@ $("cancelPasswordChange").addEventListener("click",()=>$("changePasswordModal").
 $("changePasswordForm").addEventListener("submit",async e=>{
  e.preventDefault();try{
   if(!await checkPassword($("oldPasswordInput").value))throw Error("La contraseña actual no es correcta.");
-  const p=$("newPasswordInput").value;if(p.length<4)throw Error("Usa al menos 4 caracteres para la nueva contraseña.");
+  const p=$("newPasswordInput").value;if(p.length<8)throw Error("La nueva contraseña debe tener al menos 8 caracteres.");
   if(p!==$("newPasswordConfirmInput").value)throw Error("La confirmación no coincide.");
-  await setPassword(p);$("changePasswordModal").classList.add("hidden");notify("Contraseña modificada correctamente.");
+  await setPassword(p);$("changePasswordModal").classList.add("hidden");notify("Contraseña modificada correctamente en este navegador.");
  }catch(err){$("changePasswordError").textContent=err.message||"No se pudo cambiar la contraseña."}
 });
 
