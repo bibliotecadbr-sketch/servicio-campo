@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#172554">
-<title>Servicio del Campo | Gestión local</title>
+<title>Servicio del Campo | Gestión local v3</title>
 <style>
 :root{--navy:#172554;--blue:#4f46e5;--blue2:#4338ca;--bg:#f1f5f9;--ink:#1e293b;--muted:#64748b;--line:#e2e8f0;--green:#047857;--red:#be123c}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -31,7 +31,7 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#fafafa}.empty{
 #toast{position:fixed;right:16px;bottom:16px;background:#0f172a;color:white;padding:12px 15px;border-radius:10px;box-shadow:0 8px 25px #0002;display:none;z-index:10;max-width:min(92vw,420px)}
 .column-tools{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.format-table input{min-width:110px;border:0;background:transparent;padding:4px}.format-table td{min-width:120px}
 @media(max-width:650px){.grid{grid-template-columns:1fr}.full{grid-column:auto}.panel{padding:14px}h1{font-size:19px}.search{max-width:none;width:100%}}
-@media print{@page{size:landscape;margin:12mm}body{background:white;color:black;font-size:11px}header{background:white!important;color:black!important;box-shadow:none;padding:0 0 10px}header p{color:#333}nav,.no-print,footer,#toast{display:none!important}main{max-width:none;margin:0;padding:0}.panel{border:0;box-shadow:none;padding:0;margin:0}.table-wrap{overflow:visible;border:0}table{min-width:0;width:100%}th,td{border:1px solid #555!important;padding:6px 7px;color:black!important}th{background:#e5e7eb!important}.format-table input{color:black!important}}
+@media print{@page{size:A4 portrait;margin:10mm}body{background:white;color:black;font-size:11px}header{background:white!important;color:black!important;box-shadow:none;padding:0 0 10px}header p{color:#333}header h1{font-size:17px}nav,.no-print,footer,#toast{display:none!important}main{max-width:none;margin:0;padding:0}.panel{border:0;box-shadow:none;padding:0;margin:0}.table-wrap{overflow:visible;border:0}table{min-width:0!important;width:100%!important;table-layout:fixed}th,td{border:1px solid #555!important;padding:5px 4px;color:black!important;font-size:9px!important;overflow-wrap:anywhere;word-break:break-word}th{background:#e5e7eb!important} .format-table td{min-width:0!important;white-space:pre-wrap}.format-table input{color:black!important;width:100%;min-width:0!important;font-size:9px!important;padding:1px!important;white-space:pre-wrap}}
 </style>
 </head>
 <body>
@@ -41,7 +41,6 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#fafafa}.empty{
 <button class="tab" data-view="publicadores">Publicadores</button>
 <button class="tab" data-view="lugares">Lugares de encuentro</button>
 <button class="tab" data-view="territorios">Territorios</button>
-<button class="tab" data-view="conductores">Conductores</button>
 <button class="tab" data-view="formato">Formato para cartelera</button>
 <button class="tab" data-view="copias">Exportar y copias</button>
 </div></nav>
@@ -53,7 +52,7 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#fafafa}.empty{
    <div class="grid">
     <div><label for="fecha">Fecha *</label><input id="fecha" type="date" required></div>
     <div><label for="hora">Hora *</label><input id="hora" placeholder="Ej. 09:00 a. m." required list="horaOptions"><datalist id="horaOptions"></datalist></div>
-    <div><label for="conductor">Conductor *</label><input id="conductor" placeholder="Selecciona o escribe un conductor" required list="conductorOptions"><datalist id="conductorOptions"></datalist></div>
+    <div><label for="conductor">Conductor *</label><input id="conductor" placeholder="Selecciona o escribe un conductor" required></div>
     <div><label for="territorio">Territorio(s) *</label><input id="territorio" placeholder="Selecciona o escribe territorio(s)" required list="territorioOptions"><datalist id="territorioOptions"></datalist></div>
     <div class="full"><label for="punto">Lugar / punto de encuentro *</label><input id="punto" placeholder="Selecciona o escribe el lugar" required list="lugarOptions"><datalist id="lugarOptions"></datalist></div>
     <div class="full"><label for="participantes">Publicadores asignados</label><input id="participantes" placeholder="Nombres separados por coma" list="publicadorOptions"><datalist id="publicadorOptions"></datalist><div class="muted">Puedes seleccionar nombres del registro o escribir otros.</div></div>
@@ -89,14 +88,6 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#fafafa}.empty{
  <div class="toolbar" style="margin-top:12px"><button>Guardar territorio</button><button type="button" class="secondary hidden" id="terrCancel">Cancelar</button></div></form></div>
  <div class="panel"><div class="topline"><h2>Territorios registrados</h2><input class="search" id="terrSearch" placeholder="Buscar territorio…"></div><div class="table-wrap"><table><thead><tr><th>Código</th><th>Nombre / zona</th><th>Descripción</th><th>Acciones</th></tr></thead><tbody id="terrRows"></tbody></table></div></div>
 </section>
-
-<section id="view-conductores" class="view hidden">
- <div class="panel no-print"><h2 id="condTitle">Registrar conductor</h2><form id="condForm"><input type="hidden" id="condId"><div class="grid">
- <div><label>Nombre y apellido *</label><input id="condNombre" required></div><div><label>Teléfono (opcional)</label><input id="condTelefono" type="tel"></div><div class="full"><label>Observaciones (opcional)</label><textarea id="condNotas"></textarea></div></div>
- <div class="toolbar" style="margin-top:12px"><button>Guardar conductor</button><button type="button" class="secondary hidden" id="condCancel">Cancelar</button></div></form></div>
- <div class="panel"><div class="topline"><h2>Conductores registrados</h2><input class="search" id="condSearch" placeholder="Buscar conductor…"></div><div class="table-wrap"><table><thead><tr><th>Nombre</th><th>Teléfono</th><th>Observaciones</th><th>Acciones</th></tr></thead><tbody id="condRows"></tbody></table></div></div>
-</section>
-
 <section id="view-formato" class="view hidden">
  <div class="panel no-print"><div class="topline"><div><h2>Formato para cartelera</h2><div class="muted">Genera una tabla desde las actividades y personalízala antes de imprimir.</div></div></div>
  <div class="toolbar"><label for="formatMonth" style="margin:0">Mes de programación:</label><input id="formatMonth" type="month" style="max-width:180px"><button id="generateFormat">Actualizar desde actividades</button><button class="secondary" id="addFormatRow">Agregar fila</button><button class="secondary" id="addFormatCol">Agregar columna</button><button class="green" onclick="window.print()">Imprimir cartelera</button></div>
@@ -107,7 +98,7 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#fafafa}.empty{
 
 <section id="view-copias" class="view hidden">
  <div class="panel"><h2>Exportar programación y registros</h2><p class="muted">Los archivos CSV se pueden abrir con Microsoft Excel.</p><div class="toolbar"><button id="exportActivities" class="green">Exportar actividades CSV</button><button id="exportCatalogs" class="secondary">Exportar registros CSV</button></div></div>
- <div class="panel"><h2>Copias de seguridad</h2><p class="muted">La copia JSON contiene actividades, publicadores, lugares, territorios, conductores y el formato de cartelera.</p><div class="toolbar"><button id="backup" class="green">Descargar copia JSON</button><label class="file-label" for="restore">Restaurar copia JSON</label><input class="hidden" type="file" id="restore" accept=".json,application/json"></div></div>
+ <div class="panel"><h2>Copias de seguridad</h2><p class="muted">La copia JSON contiene actividades, publicadores, lugares, territorios, y el formato de cartelera.</p><div class="toolbar"><button id="backup" class="green">Descargar copia JSON</button><label class="file-label" for="restore">Restaurar copia JSON</label><input class="hidden" type="file" id="restore" accept=".json,application/json"></div></div>
  <div class="panel"><h2>Almacenamiento local</h2><p class="muted">Los datos se guardan en este navegador y dispositivo. GitHub Pages publica la aplicación, pero no recibe ni sincroniza los registros. El archivo abierto localmente y la dirección de GitHub Pages tienen almacenamientos separados. Antes de limpiar el navegador o cambiar de instalación, descarga una copia JSON.</p></div>
 </section>
 </main>
@@ -117,16 +108,16 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#fafafa}.empty{
 const KEY="servicioDelCampo_local_v1", FORMAT_KEY="servicioDelCampo_formato_v1";
 const $=id=>document.getElementById(id);
 const uid=()=>window.crypto?.randomUUID?crypto.randomUUID():String(Date.now())+Math.random().toString(16).slice(2);
-const state={activities:read(KEY,[]),publicadores:read(KEY+"_publicadores",[]),lugares:read(KEY+"_lugares",[]),territorios:read(KEY+"_territorios",[]),conductores:read(KEY+"_conductores",[]),format:read(FORMAT_KEY,null)};
+const state={activities:read(KEY,[]),publicadores:read(KEY+"_publicadores",[]),lugares:read(KEY+"_lugares",[]),territorios:read(KEY+"_territorios",[]),format:read(FORMAT_KEY,null)};
 function read(k,fallback){try{const v=localStorage.getItem(k);return v?JSON.parse(v):fallback}catch(e){return fallback}}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(state.activities));localStorage.setItem(KEY+"_publicadores",JSON.stringify(state.publicadores));localStorage.setItem(KEY+"_lugares",JSON.stringify(state.lugares));localStorage.setItem(KEY+"_territorios",JSON.stringify(state.territorios));localStorage.setItem(KEY+"_conductores",JSON.stringify(state.conductores));localStorage.setItem(FORMAT_KEY,JSON.stringify(state.format));$("saveStatus").textContent="Guardado local"}catch(e){$("saveStatus").textContent="Error al guardar";notify("No se pudo guardar. Descarga una copia de seguridad.")}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state.activities));localStorage.setItem(KEY+"_publicadores",JSON.stringify(state.publicadores));localStorage.setItem(KEY+"_lugares",JSON.stringify(state.lugares));localStorage.setItem(KEY+"_territorios",JSON.stringify(state.territorios));localStorage.setItem(FORMAT_KEY,JSON.stringify(state.format));$("saveStatus").textContent="Guardado local"}catch(e){$("saveStatus").textContent="Error al guardar";notify("No se pudo guardar. Descarga una copia de seguridad.")}}
 function notify(s){const t=$("toast");t.textContent=s;t.style.display="block";clearTimeout(notify.timer);notify.timer=setTimeout(()=>t.style.display="none",3000)}
 function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function dateFmt(v){if(!v)return "—";const p=v.split("-");return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:v}
 function sortByDate(a,b){return (a.fecha||"").localeCompare(b.fecha||"")||(a.hora||"").localeCompare(b.hora||"")}
 function setOptions(id,arr,formatter=x=>x){$(id).innerHTML=[...new Set(arr.map(formatter).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es")).map(x=>`<option value="${esc(x)}"></option>`).join("")}
 function refreshOptions(){
- setOptions("conductorOptions",state.conductores,x=>x.nombre);setOptions("territorioOptions",state.territorios,x=>`${x.codigo} - ${x.nombre}`);
+ setOptions("territorioOptions",state.territorios,x=>`${x.codigo} - ${x.nombre}`);
  setOptions("lugarOptions",state.lugares,x=>x.direccion?`${x.nombre} — ${x.direccion}`:x.nombre);
  setOptions("publicadorOptions",state.publicadores,x=>x.nombre);
  setOptions("horaOptions",state.activities,x=>x.hora);
@@ -146,8 +137,7 @@ $("activitySearch").oninput=renderActivities;$("activityMonth").onchange=renderA
 const catalogs={
  publicadores:{items:"publicadores",form:"pubForm",fields:["pubNombre","pubTelefono","pubNotas"],search:"pubSearch",rows:"pubRows",cancel:"pubCancel",title:"pubTitle",map:v=>({nombre:v[0],telefono:v[1],notas:v[2]}),values:x=>[x.nombre,x.telefono,x.notas],labels:["Nombre","Teléfono","Observaciones"]},
  lugares:{items:"lugares",form:"lugarForm",fields:["lugarNombre","lugarDireccion","lugarNotas"],search:"lugarSearch",rows:"lugarRows",cancel:"lugarCancel",title:"lugarTitle",map:v=>({nombre:v[0],direccion:v[1],notas:v[2]}),values:x=>[x.nombre,x.direccion,x.notas],labels:["Nombre","Dirección / referencia","Detalles"]},
- territorios:{items:"territorios",form:"terrForm",fields:["terrCodigo","terrNombre","terrNotas"],search:"terrSearch",rows:"terrRows",cancel:"terrCancel",title:"terrTitle",map:v=>({codigo:v[0],nombre:v[1],notas:v[2]}),values:x=>[x.codigo,x.nombre,x.notas],labels:["Código","Nombre / zona","Descripción"]},
- conductores:{items:"conductores",form:"condForm",fields:["condNombre","condTelefono","condNotas"],search:"condSearch",rows:"condRows",cancel:"condCancel",title:"condTitle",map:v=>({nombre:v[0],telefono:v[1],notas:v[2]}),values:x=>[x.nombre,x.telefono,x.notas],labels:["Nombre","Teléfono","Observaciones"]}
+ territorios:{items:"territorios",form:"terrForm",fields:["terrCodigo","terrNombre","terrNotas"],search:"terrSearch",rows:"terrRows",cancel:"terrCancel",title:"terrTitle",map:v=>({codigo:v[0],nombre:v[1],notas:v[2]}),values:x=>[x.codigo,x.nombre,x.notas],labels:["Código","Nombre / zona","Descripción"]}
 };
 function renderCatalog(key){const c=catalogs[key],q=$(c.search).value.toLocaleLowerCase("es"),arr=state[c.items].filter(x=>c.values(x).join(" ").toLocaleLowerCase("es").includes(q));$(c.rows).innerHTML=arr.length?arr.map(x=>`<tr>${c.values(x).map(v=>`<td>${esc(v||"—")}</td>`).join("")}<td><div class="actions"><button class="small secondary" data-cat="${key}" data-op="edit" data-id="${esc(x.id)}">Editar</button><button class="small danger" data-cat="${key}" data-op="del" data-id="${esc(x.id)}">Eliminar</button></div></td></tr>`).join(""):`<tr><td colspan="4" class="empty">No hay registros.</td></tr>`}
 function resetCatalog(key){const c=catalogs[key];$(c.form).reset();$(c.fields[0].replace(/Nombre|Codigo|Telefono/,"Id")).value="";$(c.cancel).classList.add("hidden");$(c.title).textContent=({publicadores:"Registrar publicador",lugares:"Registrar lugar de encuentro",territorios:"Registrar territorio",conductores:"Registrar conductor"})[key]}
@@ -177,14 +167,14 @@ function exportCsv(name,headers,rows){const csv="\uFEFF"+[headers,...rows].map(r
 $("exportActivities").onclick=()=>exportCsv("servicio_del_campo_actividades.csv",["Fecha","Hora","Conductor","Territorio(s)","Lugar de encuentro","Publicadores","Observaciones"],state.activities.sort(sortByDate).map(x=>[dateFmt(x.fecha),x.hora,x.conductor,x.territorio,x.punto,x.participantes,x.observaciones]));
 $("exportCatalogs").onclick=()=>{const rows=[];Object.entries(catalogs).forEach(([k,c])=>state[c.items].forEach(x=>rows.push([k,...c.values(x)])));exportCsv("servicio_del_campo_registros.csv",["Tipo","Dato 1","Dato 2","Dato 3"],rows)};
 $("backup").onclick=()=>download("copia_servicio_del_campo.json",JSON.stringify({app:"Servicio del Campo",version:2,exportado:new Date().toISOString(),...state},null,2),"application/json");
-$("restore").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const x=JSON.parse(await f.text());if(!Array.isArray(x.activities))throw Error("No se encontró la lista de actividades.");if(!confirm("La restauración reemplazará todos los registros actuales y el formato. ¿Deseas continuar?"))return;state.activities=x.activities;state.publicadores=Array.isArray(x.publicadores)?x.publicadores:[];state.lugares=Array.isArray(x.lugares)?x.lugares:[];state.territorios=Array.isArray(x.territorios)?x.territorios:[];state.conductores=Array.isArray(x.conductores)?x.conductores:[];state.format=x.format||null;save();resetActivity();Object.keys(catalogs).forEach(renderCatalog);renderActivities();refreshOptions();renderFormat();notify("Copia restaurada correctamente.")}catch(err){alert("No se pudo restaurar: "+err.message)}finally{e.target.value=""}};
+$("restore").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const x=JSON.parse(await f.text());if(!Array.isArray(x.activities))throw Error("No se encontró la lista de actividades.");if(!confirm("La restauración reemplazará todos los registros actuales y el formato. ¿Deseas continuar?"))return;state.activities=x.activities;state.publicadores=Array.isArray(x.publicadores)?x.publicadores:[];state.lugares=Array.isArray(x.lugares)?x.lugares:[];state.territorios=Array.isArray(x.territorios)?x.territorios:[];state.format=x.format||null;save();resetActivity();Object.keys(catalogs).forEach(renderCatalog);renderActivities();refreshOptions();renderFormat();notify("Copia restaurada correctamente.")}catch(err){alert("No se pudo restaurar: "+err.message)}finally{e.target.value=""}};
 
 // Migración de la primera versión: conserva actividades previas.
 if(!Array.isArray(state.activities))state.activities=[];
 if(!Array.isArray(state.publicadores))state.publicadores=[];
 if(!Array.isArray(state.lugares))state.lugares=[];
 if(!Array.isArray(state.territorios))state.territorios=[];
-if(!Array.isArray(state.conductores))state.conductores=[];
+
 if(state.format&&!Array.isArray(state.format.rows))state.format=null;
 Object.keys(catalogs).forEach(renderCatalog);renderActivities();refreshOptions();ensureFormat();save();
 </script>
