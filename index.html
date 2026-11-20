@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#172554">
-<title>Servicio del Campo | Gestión local v5</title>
+<title>Servicio del Campo | Gestión local v6</title>
 <style>
 :root{--navy:#172554;--blue:#4f46e5;--blue2:#4338ca;--bg:#f1f5f9;--ink:#1e293b;--muted:#64748b;--line:#e2e8f0;--green:#047857;--red:#be123c}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -20,7 +20,7 @@ button.danger{background:#fff1f2;color:var(--red)}button.danger:hover{background
 label{display:block;font-size:11px;font-weight:750;color:#475569;margin:0 0 5px}
 input,select,textarea{width:100%;border:1px solid #cbd5e1;border-radius:9px;padding:9px 10px;background:white;color:var(--ink);font:inherit;min-width:0}
 input:focus,select:focus,textarea:focus{outline:2px solid #a5b4fc;border-color:var(--blue)}
-textarea{min-height:70px;resize:vertical}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.full{grid-column:1/-1}
+textarea{min-height:70px;resize:vertical}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.form-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 16px;align-items:start}.form-pair>.panel{min-width:0}.full{grid-column:1/-1}
 .topline{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
 .search{max-width:330px}.muted{font-size:11px;color:var(--muted)}
 .table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:11px}table{border-collapse:collapse;width:100%;min-width:700px}
@@ -30,6 +30,7 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#fafafa}.empty{
 .hidden{display:none!important}footer{text-align:center;color:var(--muted);font-size:11px;padding:12px 16px 28px}
 #toast{position:fixed;right:16px;bottom:16px;background:#0f172a;color:white;padding:12px 15px;border-radius:10px;box-shadow:0 8px 25px #0002;display:none;z-index:10;max-width:min(92vw,420px)}
 .column-tools{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.format-table input{min-width:110px;border:0;background:transparent;padding:4px}.format-table td{min-width:120px}
+@media(max-width:800px){.form-pair{grid-template-columns:1fr}}
 @media(max-width:650px){.grid{grid-template-columns:1fr}.full{grid-column:auto}.panel{padding:14px}h1{font-size:19px}.search{max-width:none;width:100%}}
 @media print{@page{size:A4 portrait;margin:10mm}body{background:white;color:black;font-size:11px}header{background:white!important;color:black!important;box-shadow:none;padding:0 0 10px}header p{color:#333}header h1{font-size:17px}nav,.no-print,footer,#toast{display:none!important}main{max-width:none;margin:0;padding:0}.panel{border:0;box-shadow:none;padding:0;margin:0}.table-wrap{overflow:visible;border:0}table{min-width:0!important;width:100%!important;table-layout:fixed}th,td{border:1px solid #555!important;padding:5px 4px;color:black!important;font-size:9px!important;overflow-wrap:anywhere;word-break:break-word}th{background:#e5e7eb!important} .format-table td{min-width:0!important;white-space:pre-wrap}.format-table input{color:black!important;width:100%;min-width:0!important;font-size:9px!important;padding:1px!important;white-space:pre-wrap}}
 </style>
@@ -82,15 +83,17 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#fafafa}.empty{
 </section>
 
 <section id="view-territorios" class="view hidden">
- <div class="panel no-print"><h2 id="terrTitle">Registrar territorio</h2><form id="terrForm"><input type="hidden" id="terrId"><div class="grid">
- <div><label>Número o código *</label><input id="terrCodigo" required placeholder="Ej. 01"></div><div><label>Nombre o zona *</label><input id="terrNombre" required placeholder="Ej. Centro"></div><div class="full"><label>Descripción / referencia</label><textarea id="terrNotas"></textarea></div></div>
- <div class="toolbar" style="margin-top:12px"><button>Guardar territorio</button><button type="button" class="secondary hidden" id="terrCancel">Cancelar</button></div></form></div>
+ <div class="form-pair">
+  <div class="panel no-print"><h2 id="terrTitle">Registrar territorio</h2><form id="terrForm"><input type="hidden" id="terrId"><div class="grid">
+  <div><label>Número o código *</label><input id="terrCodigo" required placeholder="Ej. 01"></div><div><label>Nombre o zona *</label><input id="terrNombre" required placeholder="Ej. Centro"></div><div class="full"><label>Descripción / referencia</label><textarea id="terrNotas"></textarea></div></div>
+  <div class="toolbar" style="margin-top:12px"><button>Guardar territorio</button><button type="button" class="secondary hidden" id="terrCancel">Cancelar</button></div></form></div>
+  <div class="panel no-print"><h2 id="closureTitle">Cierre de territorio</h2><form id="closureForm"><input type="hidden" id="closureId"><div class="grid">
+  <div><label for="closureCode">Número o código *</label><input id="closureCode" required list="closureTerritoryOptions" placeholder="Escribe o selecciona el código"><datalist id="closureTerritoryOptions"></datalist></div>
+  <div><label for="closureConductor">Conductor</label><input id="closureConductor" list="closureConductorOptions" placeholder="Selecciona o escribe un conductor"><datalist id="closureConductorOptions"></datalist></div>
+  <div class="full"><label for="closureDate">Fecha de cierre</label><input id="closureDate" type="date"></div>
+  </div><div class="toolbar" style="margin-top:12px"><button type="submit" id="closureSave">Registrar cierre</button><button type="button" class="secondary hidden" id="closureCancel">Cancelar edición</button><button type="reset" class="secondary" id="closureClear">Limpiar</button></div></form></div>
+ </div>
  <div class="panel"><div class="topline"><h2>Territorios registrados</h2><input class="search" id="terrSearch" placeholder="Buscar territorio…"></div><div class="table-wrap"><table><thead><tr><th>Código</th><th>Nombre / zona</th><th>Descripción</th><th>Acciones</th></tr></thead><tbody id="terrRows"></tbody></table></div></div>
- <div class="panel no-print"><h2 id="closureTitle">Cierre de territorio</h2><form id="closureForm"><input type="hidden" id="closureId"><div class="grid">
- <div><label for="closureCode">Número o código *</label><input id="closureCode" required list="closureTerritoryOptions" placeholder="Escribe o selecciona el código"><datalist id="closureTerritoryOptions"></datalist></div>
- <div><label for="closureConductor">Conductor</label><input id="closureConductor" list="closureConductorOptions" placeholder="Selecciona o escribe un conductor"><datalist id="closureConductorOptions"></datalist></div>
- <div><label for="closureDate">Fecha de cierre</label><input id="closureDate" type="date"></div>
- </div><div class="toolbar" style="margin-top:12px"><button type="submit" id="closureSave">Registrar cierre</button><button type="button" class="secondary hidden" id="closureCancel">Cancelar edición</button><button type="reset" class="secondary" id="closureClear">Limpiar</button></div></form></div>
  <div class="panel"><div class="topline"><div><h2>Territorios cerrados</h2><div class="muted" id="closureCount"></div></div><input class="search" id="closureSearch" placeholder="Buscar cierre…"></div><div class="table-wrap"><table><thead><tr><th>Número o código</th><th>Conductor</th><th>Fecha de cierre</th><th>Acciones</th></tr></thead><tbody id="closureRows"></tbody></table></div></div>
 </section>
 <section id="view-formato" class="view hidden">
