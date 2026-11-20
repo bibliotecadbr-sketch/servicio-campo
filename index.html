@@ -158,7 +158,7 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#fafafa}.empty{
    <button id="registerExport" class="secondary">Exportar CSV</button>
    <button class="green" onclick="window.print()">Imprimir formulario</button>
   </div>
-  <p class="muted" style="margin-top:10px">Diseño adaptado al formulario S-13 adjunto. Se muestran 20 territorios por página.</p>
+  <p class="muted" style="margin-top:10px">Diseño adaptado al formulario S-13. Se actualiza automáticamente con las fechas del Resumen anual de territorios. Se muestran 20 territorios por página.</p>
  </div>
  <div class="panel">
   <div class="register-title">REGISTRO DE ASIGNACIÓN DE TERRITORIO</div>
@@ -174,7 +174,7 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#fafafa}.empty{
     <tbody id="registerRows"></tbody>
    </table>
   </div>
-  <p class="register-note">*Cuando comience una nueva página, anote en esta columna la última fecha en que los territorios se completaron.</p>
+  <p class="register-note">*Cuando comience una nueva página, anote en esta columna la última fecha en que los territorios se completaron. Las fechas se sincronizan con las asignaciones y cierres del Resumen anual.</p>
   <div class="register-code">S-13 1/22 <span style="float:right">1</span></div>
  </div>
 </section>
@@ -208,7 +208,7 @@ function refreshOptions(){
  setOptions("closureConductorOptions",state.publicadores.filter(x=>x.puedeConducir==="si"),x=>x.nombre);
  setOptions("horaOptions",state.activities,x=>x.hora);
 }
-function switchView(v){document.querySelectorAll(".view").forEach(x=>x.classList.add("hidden"));$("view-"+v).classList.remove("hidden");document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.view===v));if(v==="formato")renderFormat();if(v==="actividades")renderActivities();if(v==="resumen")renderSummary();if(v==="registroAsignacion")renderTerritoryAssignmentRegister()}
+function switchView(v){document.querySelectorAll(".view").forEach(x=>x.classList.add("hidden"));$("view-"+v).classList.remove("hidden");document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.view===v));if(v==="formato")renderFormat();if(v==="actividades")renderActivities();if(v==="resumen")renderSummary();if(v==="registroAsignacion"){$("registerYear").value=summaryYear();renderTerritoryAssignmentRegister()}}
 $("tabs").addEventListener("click",e=>{const b=e.target.closest("[data-view]");if(b)switchView(b.dataset.view)});
 
 // Actividades
@@ -382,22 +382,32 @@ $("exportCatalogs").onclick=()=>{const rows=[];Object.entries(catalogs).forEach(
 function registerYear(){const y=parseInt($("registerYear").value,10);return Number.isFinite(y)?String(y):String(new Date().getFullYear())}
 function registerRowsForYear(){
  const y=registerYear();
- const territories=[...state.territorios].sort((a,b)=>String(a.codigo).localeCompare(String(b.codigo),"es",{numeric:true})).slice(0,20);
- const saved=Array.isArray(state.territoryAssignmentRegister)?state.territoryAssignmentRegister:[];
- const byCode=new Map(saved.filter(x=>String(x.anio)===y).map(x=>[String(x.codigo),x]));
- const source=Array.from({length:20},(_,i)=>territories[i]||({codigo:String(i+1),nombre:""}));
- return source.map((t,i)=>{
-  const code=String(t.codigo||i+1);
-  const old=byCode.get(code)||{};
-  const slots=Array.from({length:4},(_,j)=>({asignada:old.slots?.[j]?.asignada||"",completada:old.slots?.[j]?.completada||""}));
-  const dates=slots.map(x=>x.completada).filter(Boolean).sort();
-  return {anio:y,codigo:code,nombre:t.nombre||"",slots,ultima:dates.at(-1)||""};
+ const territoryMap=new Map();
+ const addTerritory=(code,name="")=>{
+  const c=String(code??"").trim();
+  if(!c)return;
+  if(!territoryMap.has(c))territoryMap.set(c,{codigo:c,nombre:name||""});
+  else if(name&&!territoryMap.get(c).nombre)territoryMap.get(c).nombre=name;
+ };
+ (Array.isArray(state.territorios)?state.territorios:[]).forEach(t=>addTerritory(t.codigo,t.nombre));
+ const activities=(Array.isArray(state.activities)?state.activities:[]).filter(r=>summaryDateYear(r.fecha)===y);
+ const closures=(Array.isArray(state.territoryClosures)?state.territoryClosures:[]).filter(r=>summaryDateYear(r.fecha)===y);
+ activities.forEach(r=>addTerritory(r.codigo));
+ closures.forEach(r=>addTerritory(r.codigo));
+ const source=[...territoryMap.values()].sort((a,b)=>String(a.codigo).localeCompare(String(b.codigo),"es",{numeric:true})).slice(0,20);
+ while(source.length<20)source.push({codigo:String(source.length+1),nombre:""});
+ return source.map(t=>{
+  const code=String(t.codigo);
+  const assigned=[...new Set(activities.filter(r=>String(r.codigo??"").trim()===code).map(r=>r.fecha).filter(Boolean))].sort();
+  const completed=[...new Set(closures.filter(r=>String(r.codigo??"").trim()===code).map(r=>r.fecha).filter(Boolean))].sort();
+  const slots=Array.from({length:4},(_,i)=>({asignada:assigned[i]||"",completada:completed[i]||""}));
+  return {anio:y,codigo:code,nombre:t.nombre||"",slots,ultima:completed.length?completed[completed.length-1]:""};
  });
 }
 function renderTerritoryAssignmentRegister(){
  const year=registerYear();$("registerYearLabel").textContent=year;
  const rows=registerRowsForYear();
- $("registerRows").innerHTML=rows.map(r=>`<tr><td class="territory-number">${esc(r.codigo)}</td><td>${esc(dateFmt(r.ultima))}</td>${r.slots.map((slot,i)=>`<td><input type="date" aria-label="Territorio ${esc(r.codigo)} fecha asignada ${i+1}" data-reg-code="${esc(r.codigo)}" data-reg-slot="${i}" data-reg-field="asignada" value="${esc(slot.asignada)}"></td><td><input type="date" aria-label="Territorio ${esc(r.codigo)} fecha completada ${i+1}" data-reg-code="${esc(r.codigo)}" data-reg-slot="${i}" data-reg-field="completada" value="${esc(slot.completada)}"></td>`).join("")}</tr>`).join("");
+ $("registerRows").innerHTML=rows.map(r=>`<tr><td class="territory-number">${esc(r.codigo)}</td><td>${esc(dateFmt(r.ultima))}</td>${r.slots.map(slot=>`<td>${esc(slot.asignada?dateFmt(slot.asignada):"")}</td><td>${esc(slot.completada?dateFmt(slot.completada):"")}</td>`).join("")}</tr>`).join("");
 }
 function saveTerritoryRegisterInput(input){
  const year=registerYear(),code=input.dataset.regCode,slotIndex=Number(input.dataset.regSlot),field=input.dataset.regField;
@@ -412,9 +422,9 @@ function saveTerritoryRegisterInput(input){
  row.children[1].textContent=dates.length?dateFmt(dates[dates.length-1]):"—";
  notify("Registro de asignación guardado.");
 }
-$("registerRows").addEventListener("change",e=>{const input=e.target.closest("input[data-reg-code]");if(input)saveTerritoryRegisterInput(input)});
+
 $("registerYear").value=String(new Date().getFullYear());
-$("registerYear").addEventListener("change",renderTerritoryAssignmentRegister);
+$("registerYear").addEventListener("change",()=>{$("summaryYear").value=registerYear();renderTerritoryAssignmentRegister()});
 $("registerRefresh").onclick=renderTerritoryAssignmentRegister;
 $("registerExport").onclick=()=>{
  const rows=registerRowsForYear().map(r=>[r.codigo,r.nombre,r.ultima,...r.slots.flatMap(x=>[x.asignada,x.completada])]);
