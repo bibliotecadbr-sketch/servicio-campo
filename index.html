@@ -185,32 +185,60 @@ $("closureCancel").onclick=resetClosure;$("closureClear").onclick=()=>setTimeout
 
 // Resumen anual: fechas de asignación derivadas de actividades y fechas de cierre registradas
 function summaryYear(){const y=parseInt($("summaryYear").value,10);return Number.isFinite(y)?String(y):String(new Date().getFullYear())}
+function normalizeTerritoryText(value){
+ return String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLocaleLowerCase("es").trim();
+}
 function territoryAppears(activityText,territory){
- const text=String(activityText||"").toLocaleLowerCase("es");
- const code=String(territory.codigo||"").trim().toLocaleLowerCase("es");
- const name=String(territory.nombre||"").trim().toLocaleLowerCase("es");
- const has=(term)=>{if(!term)return false;const escaped=term.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");return new RegExp("(^|[^a-z0-9])"+escaped+"(?=$|[^a-z0-9])","i").test(text)};
- return has(code)||has(name);
+ const text=normalizeTerritoryText(activityText);
+ const candidates=[territory.codigo,territory.nombre].map(normalizeTerritoryText).filter(Boolean);
+ return candidates.some(term=>{
+  // Match code/name as a whole token, allowing multiple territories separated by commas, slashes, semicolons or spaces.
+  const escaped=term.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+  return new RegExp("(^|[^a-z0-9])"+escaped+"(?=$|[^a-z0-9])","i").test(text);
+ });
 }
 function getSummaryRows(){
  const year=summaryYear();
- return state.territorios.map(t=>{
-  const matchingActivities=state.activities.filter(a=>(a.fecha||"").startsWith(year+"-")&&territoryAppears(a.territorio,t));
+ // Include territories from the catalog and also codes that exist only in closure records.
+ const byCode=new Map();
+ state.territorios.forEach(t=>{
+  const key=normalizeTerritoryText(t.codigo);
+  if(key)byCode.set(key,{codigo:String(t.codigo||"").trim(),nombre:t.nombre||""});
+ });
+ state.territoryClosures.forEach(c=>{
+  const key=normalizeTerritoryText(c.codigo);
+  if(key&&!byCode.has(key))byCode.set(key,{codigo:String(c.codigo||"").trim(),nombre:""});
+ });
+ return [...byCode.values()].map(t=>{
+  const matchingActivities=state.activities.filter(a=>(String(a.fecha||"").slice(0,4)===year)&&territoryAppears(a.territorio,t));
   const assignments=[...new Set(matchingActivities.map(a=>a.fecha).filter(Boolean))].sort();
-  const conductors=[...new Set(matchingActivities.map(a=>String(a.conductor||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es"));
-  const closures=state.territoryClosures.filter(c=>String(c.codigo||"").trim().toLocaleLowerCase("es")===String(t.codigo||"").trim().toLocaleLowerCase("es")&&(c.fecha||"").startsWith(year+"-")).map(c=>c.fecha).filter(Boolean).sort();
-  return {anio:year,codigo:t.codigo,conductores,asignaciones:assignments,cierres:closures};
+  const closureRecords=state.territoryClosures.filter(c=>normalizeTerritoryText(c.codigo)===normalizeTerritoryText(t.codigo)&&String(c.fecha||"").slice(0,4)===year);
+  const closures=[...new Set(closureRecords.map(c=>c.fecha).filter(Boolean))].sort();
+  const conductors=[...new Set([
+   ...matchingActivities.map(a=>String(a.conductor||"").trim()),
+   ...closureRecords.map(c=>String(c.conductor||"").trim())
+  ].filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es"));
+  return {anio:year,codigo:t.codigo,nombre:t.nombre,conductores,asignaciones:assignments,cierres:closures};
  }).sort((a,b)=>String(a.codigo).localeCompare(String(b.codigo),"es",{numeric:true}));
 }
 function renderSummary(){
- const year=summaryYear(),q=$("summarySearch").value.toLocaleLowerCase("es");
- const all=getSummaryRows(),rows=all.filter(r=>[r.anio,r.codigo,r.conductores.join(" "),r.asignaciones.map(dateFmt).join(" "),r.cierres.map(dateFmt).join(" ")].join(" ").toLocaleLowerCase("es").includes(q));
+ const year=summaryYear(),q=normalizeTerritoryText($("summarySearch").value);
+ const all=getSummaryRows(),rows=all.filter(r=>normalizeTerritoryText([r.anio,r.codigo,r.nombre,r.conductores.join(" "),r.asignaciones.map(dateFmt).join(" "),r.cierres.map(dateFmt).join(" ")].join(" ")).includes(q));
  $("summaryHeading").textContent="Resumen de territorios — "+year;
  $("summaryInfo").textContent=`${rows.length} territorios visibles · ${all.reduce((n,r)=>n+r.asignaciones.length,0)} fechas de asignación · ${all.reduce((n,r)=>n+r.cierres.length,0)} cierres en el año`;
- $("summaryRows").innerHTML=rows.length?rows.map(r=>`<tr><td>${esc(r.anio)}</td><td><b>${esc(r.codigo)}</b></td><td>${r.conductores.length?r.conductores.map(esc).join("<br>"):"—"}</td><td>${r.asignaciones.length?r.asignaciones.map(dateFmt).map(esc).join("<br>"):"—"}</td><td>${r.cierres.length?r.cierres.map(dateFmt).map(esc).join("<br>"):"—"}</td></tr>`).join(""):`<tr><td colspan="5" class="empty">No hay territorios registrados que coincidan con la búsqueda.</td></tr>`;
+ $("summaryRows").innerHTML=rows.length?rows.map(r=>`<tr><td>${esc(r.anio)}</td><td><b>${esc(r.codigo)}</b>${r.nombre?`<div class="muted">${esc(r.nombre)}</div>`:""}</td><td>${r.conductores.length?r.conductores.map(esc).join("<br>"):"—"}</td><td>${r.asignaciones.length?r.asignaciones.map(dateFmt).map(esc).join("<br>"):"—"}</td><td>${r.cierres.length?r.cierres.map(dateFmt).map(esc).join("<br>"):"—"}</td></tr>`).join(""):`<tr><td colspan="5" class="empty">No hay territorios registrados para ${esc(year)}. Comprueba que los territorios estén registrados y que el código o nombre aparezca en el campo “Territorio(s)” de las actividades.</td></tr>`;
 }
 $("summaryYear").value=String(new Date().getFullYear());
-$("summaryRefresh").onclick=renderSummary;
+$("summaryRefresh").onclick=()=>{
+ try{
+  const readLatest=(key,fallback)=>{const raw=localStorage.getItem(key);if(!raw)return fallback;const parsed=JSON.parse(raw);return Array.isArray(parsed)?parsed:fallback};
+  state.activities=readLatest(KEY,state.activities);
+  state.territorios=readLatest(KEY+"_territorios",state.territorios);
+  state.territoryClosures=readLatest(KEY+"_cierres_territorio",state.territoryClosures);
+  renderSummary();
+  notify("Resumen anual actualizado con los registros guardados.");
+ }catch(err){renderSummary();notify("No se pudieron recargar los datos guardados; se muestra la información de esta página.")}
+};
 $("summaryYear").addEventListener("change",renderSummary);
 $("summarySearch").addEventListener("input",renderSummary);
 $("summaryExport").onclick=()=>{
